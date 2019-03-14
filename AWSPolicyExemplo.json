@@ -1,0 +1,68 @@
+## Funciona tudo!
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iot:Publish",
+        "iot:Receive"
+      ],
+      "Resource": [
+        "arn:aws:iot:us-east-2:779882721705:topic/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iot:Connect"
+      ],
+      "Resource": [
+        "arn:aws:iot:us-east-2:779882721705:client/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iot:Subscribe"
+      ],
+      "Resource": [
+        "arn:aws:iot:us-east-2:779882721705:topicfilter/*"
+      ]
+    }
+  ]
+}
+
+------------- Funciona, mas aberta --------------------
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iot:Publish"
+      ],
+      "Resource": [
+        "arn:aws:iot:us-east-2:779882721705:topic/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iot:Connect"
+      ],
+      "Resource": [
+        "arn:aws:iot:us-east-2:779882721705:topic/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iot:*"
+      ],
+      "Resource": [
+        "*"
+      ]
+    }
+  ]
+}
