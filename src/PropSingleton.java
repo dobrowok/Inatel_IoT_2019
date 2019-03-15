@@ -3,14 +3,15 @@ import java.io.FileOutputStream;
 import java.util.Properties;
 
 // https://www.devmedia.com.br/utilizando-arquivos-de-propriedades-no-java/25546
+// https://dzone.com/articles/java-singletons-using-enum
 	
-public enum EnumArgos {
+public enum PropSingleton {
     
     INSTANCE("Initial class info"); 
   
     private Properties props;
   
-    private EnumArgos(String info) {
+    private PropSingleton(String info) {
         // Get the properties file, or create it if not exist
         props = new Properties();
         FileInputStream file;
@@ -38,7 +39,7 @@ public enum EnumArgos {
     	}
     }
   
-    public EnumArgos getInstance() {
+    public PropSingleton getInstance() {
         return INSTANCE;
     }
      
