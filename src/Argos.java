@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.ZonedDateTime;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
@@ -99,12 +100,22 @@ public class Argos {
 			 System.exit(-1);
 		 }
 		
-		 commInterface.publish("brá blá");
+		 commInterface.publish("Status", "brá blá");
 		
 	}
 	
 	public void run() {
-		System.out.println("running");
+
+		while (prop.isRunning()) {
+			try {
+				Thread.sleep(5000) ;
+				
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
 		commInterface.disconnect();
 	}
 	

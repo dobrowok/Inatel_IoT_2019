@@ -13,6 +13,7 @@ import org.eclipse.paho.client.mqttv3.IMqttClient;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
@@ -31,6 +32,7 @@ public class CommMQttImpl extends ArgosCommBase implements MqttCallback
 	// MQtt stuff
 	private String mqttType;
 	private String topic;
+	private String publishTo;
 	private int qos= 2;
 	private String broker;
 	private String content  = "Starting up: ";
@@ -39,7 +41,7 @@ public class CommMQttImpl extends ArgosCommBase implements MqttCallback
 	private String certpath;
 	private String keypath;
 	private int publishInterval;
-	private MqttClient sampleClient;
+	private MqttAsyncClient sampleClient;
 	private MemoryPersistence persistence = new MemoryPersistence();
 	private String tmpDir;
 	private final static Logger LOGGER = Logger.getLogger("CommMQttImpl");
@@ -50,10 +52,11 @@ public class CommMQttImpl extends ArgosCommBase implements MqttCallback
 		
 		prop = PropSingleton.INSTANCE;
 		
-		mqttType = prop.getProp("mqtt.type");
-		topic 	 = prop.getProp("mqtt.base_topic");
-		clientId = prop.getProp("mqtt.clientid");
-		
+		mqttType    = prop.getProp("mqtt.type");
+		topic 	    = prop.getProp("mqtt.base.topic");
+		publishTo = prop.getProp("mqtt.publish.to");
+		clientId    = prop.getProp("mqtt.client.id");
+
 		publishInterval = Integer.parseInt(prop.getProp("mqtt.publish.interval"));
 		
 		
@@ -69,21 +72,20 @@ public class CommMQttImpl extends ArgosCommBase implements MqttCallback
 				
 		
 		try {
-			sampleClient = new MqttClient(broker, clientId, persistence);
-            MqttConnectOptions connOpts = new MqttConnectOptions();
-            connOpts.setCleanSession(true);
+			sampleClient = new MqttAsyncClient(broker, clientId, persistence);
+			sampleClient.setCallback(this);
+            MqttConnectOptions options = new MqttConnectOptions();
+            //options.setCleanSession(true);
+            //options.setAutomaticReconnect(true);
             System.out.println("Connecting to broker: "+broker);
-            sampleClient.connect(connOpts);
+            sampleClient.connect(options);
             System.out.println("Connected");
             
             content += ZonedDateTime.now();
-            System.out.println("Publishing message: "+content);
-            MqttMessage message = new MqttMessage(content.getBytes());
-            message.setQos(qos);
-            sampleClient.publish(topic, message);
-            System.out.println("Message published");
+            publish("Status", "Connected...[" +content +"]");
             
-            sampleClient.subscribe(topic);
+            sampleClient.subscribe(clientId +"/#", 2 /* QoS*/);
+            LOGGER.info("subscribe[" +clientId +"/#]");
             
             
         } catch(MqttException me) {
@@ -93,16 +95,18 @@ public class CommMQttImpl extends ArgosCommBase implements MqttCallback
             System.out.println("cause "+me.getCause());
             System.out.println("excep "+me);
             me.printStackTrace();
+            prop.setRunning(false);
         }
 		
 		//System.out.println("MQtt (" +broker +":"+port +"=> ok");
 		
 	}
+	
 	public void disconnect() {
 		
 		try {
+			publish("Status", "Disconnecting..." +ZonedDateTime.now());
 			sampleClient.disconnect();
-			LOGGER.info("Disconnected");
 			
 		} catch(MqttException me) {
             System.out.println("reason "+me.getReasonCode());
@@ -113,33 +117,58 @@ public class CommMQttImpl extends ArgosCommBase implements MqttCallback
             me.printStackTrace();
         }
 		
-    	System.out.println("Disconnected");
+		LOGGER.info("Disconnected");
 	}
 
-	public void publish(String arg0) {
-		// TODO Auto-generated method stub
-		
+	public void publish(String topic, String message) {
+        MqttMessage mqTTmessage = new MqttMessage(message.getBytes());
+        mqTTmessage.setQos(qos);
+        try {
+			sampleClient.publish(topic, mqTTmessage);
+		} catch (MqttPersistenceException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (MqttException me) {
+            System.out.println("reason "+me.getReasonCode());
+            System.out.println("msg "+me.getMessage());
+            System.out.println("loc "+me.getLocalizedMessage());
+            System.out.println("cause "+me.getCause());
+            System.out.println("excep "+me);
+            me.printStackTrace();
+		}
+        LOGGER.info("pusblish[" +topic +", " +message +"] ");
 	}
 
 	@Override
 	public void process() {
-		// TODO Auto-generated method stub
-		
+		LOGGER.info("process[]");
 	}
+	
 	@Override
 	public void connectionLost(Throwable arg0) {
-		// TODO Auto-generated method stub
-		
+		LOGGER.info("connectionLost[]");
 	}
+	
 	@Override
 	public void deliveryComplete(IMqttDeliveryToken arg0) {
-		// TODO Auto-generated method stub
-		
+		LOGGER.info("deliveryComplete[]");
 	}
+	
 	@Override
-	public void messageArrived(String arg0, MqttMessage arg1) throws Exception {
-		// TODO Auto-generated method stub
+	public void messageArrived(String topic, MqttMessage message) throws Exception {
+		LOGGER.info("messageArrived["+topic +"] => " +message.toString() );
 		
+		if(topic.toLowerCase().contains("exit")) {
+			publish("Status", "received 'exit' command");
+			prop.setRunning(false);
+			
+		}
+		else if(topic.toLowerCase().contains("class")) {
+			publish("Status", "received new class");
+			
+		}
+			
+		//arg1.
 	}
 
 }
