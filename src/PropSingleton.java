@@ -10,7 +10,9 @@ public enum PropSingleton {
     INSTANCE("Initial class info"); 
   
     private Properties props;
+    private String className;
     private boolean running = true;
+    private boolean newClassReceived = false;
   
     private PropSingleton(String info) {
         // Get the properties file, or create it if not exist
@@ -23,9 +25,9 @@ public enum PropSingleton {
         while (true) {
     		try {
         	    // Create a file if it don´t exist
-    			new FileOutputStream("./argos.properties", true).close();
+    			new FileOutputStream("argos.properties", true).close();
     			
-    			file = new FileInputStream("./argos.properties");
+    			file = new FileInputStream("argos.properties");
     			props.load(file);
     			System.out.println(props.getProperty("prop.server.login"));
     			
@@ -49,11 +51,31 @@ public enum PropSingleton {
 		return props.getProperty(key);
     }
 
+	public void setProp(String key, String value) {
+		props.setProperty(key, value);
+    }
+
 	public boolean isRunning() {
 		return running;
 	}
 
 	public void setRunning(boolean running) {
 		this.running = running;
+	}
+
+	public boolean isNewClassReceived() {
+		return newClassReceived;
+	}
+
+	public void setNewClassReceived(boolean newClassReceived) {
+		this.newClassReceived = newClassReceived;
+	}
+
+	public String getClassName() {
+		return className;
+	}
+
+	public void setClassName(String className) {
+		this.className = className;
 	}
 }

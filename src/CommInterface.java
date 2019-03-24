@@ -1,4 +1,4 @@
-import java.io.IOException;
+
 
 /**
  * @author ekledob
@@ -6,6 +6,7 @@ import java.io.IOException;
  */
 public interface CommInterface {
     //public void process() throws IOException;
+	
     public void publish(String topic, String message);
     public void process();
 	public void disconnect();

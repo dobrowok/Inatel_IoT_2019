@@ -2,9 +2,12 @@
  * https://www.eclipse.org/downloads/download.php?file=/paho/releases/1.1.0/Java/plugins/org.eclipse.paho.client.mqttv3_1.1.0.jar
  * Based on : https://www.eclipse.org/paho/clients/java/
  * https://www.hackster.io/mariocannistra/python-and-paho-for-mqtt-with-aws-iot-921e41
+ * 
+ * https://www.programcreek.com/java-api-examples/?api=org.eclipse.paho.client.mqttv3.MqttMessage
  */
 
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.logging.Logger;
@@ -25,18 +28,13 @@ import org.eclipse.paho.client.mqttv3.MqttTopic;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
 
-public class CommMQttImpl extends ArgosCommBase implements MqttCallback 
+public class CommMQttImpl extends CommBase implements MqttCallback 
 {
-	private PropSingleton prop; 
-
 	// MQtt stuff
 	private String mqttType;
-	private String topic;
-	private String publishTo;
-	private int qos= 2;
+	private int    qos= 2;
 	private String broker;
 	private String content  = "Starting up: ";
-	private String clientId;
 	private String capath;
 	private String certpath;
 	private String keypath;
@@ -45,67 +43,71 @@ public class CommMQttImpl extends ArgosCommBase implements MqttCallback
 	private MemoryPersistence persistence = new MemoryPersistence();
 	private String tmpDir;
 	private final static Logger LOGGER = Logger.getLogger("CommMQttImpl");
+	
+	private final static PropSingleton PROP = PropSingleton.INSTANCE; 
 
 	public CommMQttImpl() {
 		tmpDir = System.getProperty("java.io.tmpdir"); // Temp dir
-		LOGGER.info("java.io.tmpdir= " +tmpDir);
+		LOGGER.finest("java.io.tmpdir= " +tmpDir);
 		
-		prop = PropSingleton.INSTANCE;
 		
-		mqttType    = prop.getProp("mqtt.type");
-		topic 	    = prop.getProp("mqtt.base.topic");
-		publishTo = prop.getProp("mqtt.publish.to");
-		clientId    = prop.getProp("mqtt.client.id");
+		mqttType    = PROP.getProp("mqtt.type");
+		PROP.getProp("mqtt.base.topic");
+		clientId    = PROP.getProp("client.id");
 
-		publishInterval = Integer.parseInt(prop.getProp("mqtt.publish.interval"));
+		publishInterval = Integer.parseInt(PROP.getProp("mqtt.publish.interval"));
 		
 		
 		if(mqttType.equals("aws")) {
-			broker	 = prop.getProp("mqtt.aws.broker");
-			capath   = prop.getProp("mqtt.aws.capath");
-			certpath = prop.getProp("mqtt.aws.certpath");
-			keypath  = prop.getProp("mqtt.aws.keypath");
+			broker	 = PROP.getProp("mqtt.aws.broker");
+			capath   = PROP.getProp("mqtt.aws.capath");
+			certpath = PROP.getProp("mqtt.aws.certpath");
+			keypath  = PROP.getProp("mqtt.aws.keypath");
 		}
 		else if (mqttType.equals("mosquitto")) {
-			broker	 = prop.getProp("mqtt.mosq.broker");
+			broker	 = PROP.getProp("mqtt.mosq.broker");
 		}
 				
-		
+		connect();		
+	}
+	
+	private void connect() {
 		try {
 			sampleClient = new MqttAsyncClient(broker, clientId, persistence);
 			sampleClient.setCallback(this);
-            MqttConnectOptions options = new MqttConnectOptions();
-            //options.setCleanSession(true);
-            //options.setAutomaticReconnect(true);
-            System.out.println("Connecting to broker: "+broker);
-            sampleClient.connect(options);
-            System.out.println("Connected");
-            
-            content += ZonedDateTime.now();
-            publish("Status", "Connected...[" +content +"]");
-            
-            sampleClient.subscribe(clientId +"/#", 2 /* QoS*/);
-            LOGGER.info("subscribe[" +clientId +"/#]");
-            
-            
-        } catch(MqttException me) {
-            System.out.println("reason "+me.getReasonCode());
-            System.out.println("msg "+me.getMessage());
-            System.out.println("loc "+me.getLocalizedMessage());
-            System.out.println("cause "+me.getCause());
-            System.out.println("excep "+me);
-            me.printStackTrace();
-            prop.setRunning(false);
-        }
-		
-		//System.out.println("MQtt (" +broker +":"+port +"=> ok");
-		
+			
+	        MqttConnectOptions options = new MqttConnectOptions();
+	        //options.setCleanSession(true);
+	        //options.setAutomaticReconnect(true);
+	        
+	       // options.setSocketFactory(SslUtil.getSocketFactory("caFilePath", "clientCrtFilePath", "clientKeyFilePath", "password"));
+	        
+	        LOGGER.warning("Connecting to broker: "+broker);
+	        sampleClient.connect(options);
+	        
+	        content += ZonedDateTime.now();
+	        publish(clientId +"/Status", "Connected...[" +content +"]");
+	        
+	        sampleClient.subscribe(clientId +"/#", 2 /* QoS*/);
+	        LOGGER.info("subscribe[" +clientId +"/#]");
+	        
+	        
+	    } catch(MqttException me) {
+	        System.out.println("reason "+me.getReasonCode());
+	        System.out.println("msg "+me.getMessage());
+	        System.out.println("loc "+me.getLocalizedMessage());
+	        System.out.println("cause "+me.getCause());
+	        System.out.println("excep "+me);
+	        me.printStackTrace();
+	        LOGGER.severe("Error connecting to [" +broker +"]");
+	        PROP.setRunning(false);
+	    }		
 	}
-	
+
 	public void disconnect() {
 		
 		try {
-			publish("Status", "Disconnecting..." +ZonedDateTime.now());
+			publish(clientId +"/Status", "Disconnecting..." +ZonedDateTime.now());
 			sampleClient.disconnect();
 			
 		} catch(MqttException me) {
@@ -147,28 +149,59 @@ public class CommMQttImpl extends ArgosCommBase implements MqttCallback
 	@Override
 	public void connectionLost(Throwable arg0) {
 		LOGGER.info("connectionLost[]");
+		// Connect again
+		connect();
 	}
 	
 	@Override
 	public void deliveryComplete(IMqttDeliveryToken arg0) {
-		LOGGER.info("deliveryComplete[]");
+		LOGGER.finer("deliveryComplete[]");
 	}
 	
 	@Override
 	public void messageArrived(String topic, MqttMessage message) throws Exception {
-		LOGGER.info("messageArrived["+topic +"] => " +message.toString() );
+		LOGGER.finer("messageArrived["+topic +"] => " +message.toString().substring(0, 30) );
 		
 		if(topic.toLowerCase().contains("exit")) {
-			publish("Status", "received 'exit' command");
-			prop.setRunning(false);
+			publish(clientId +"/Status", "received 'exit' command");
+			PROP.setRunning(false);
 			
 		}
 		else if(topic.toLowerCase().contains("class")) {
-			publish("Status", "received new class");
+			String filename = null;
+			
+			// 1- Extract the class name			
+			int Bracket = message.toString().indexOf('{');
+			if(Bracket>0) {
+				String parts[] = message.toString().substring(0, Bracket)
+										.split(" ");
+				filename = parts[parts.length-1]; // Get last name before the '{'
+				filename += ".java";
+				
+				// 2- Save to the file
+				try (FileOutputStream fos = new FileOutputStream(filename)) {
+				    fos.write(message.getPayload());
+					LOGGER.info("Saving to: " +System.getProperty("user.dir") +"/" +filename );
+					publish(clientId +"/Status", "received new class [" +filename +"]");
+					
+					// 3- Try to compile file
+					compile(filename);
+				    
+				} catch (IOException ioe) {
+				    ioe.printStackTrace();
+				    LOGGER.severe("Saving class failed due to: [" +ioe.getMessage() +"]");
+				    publish(clientId +"/error", ioe.getMessage());
+				}
+				
+			}else {
+				LOGGER.severe("Class received, but incomplete (cannot found a '{' inside message body);");
+				publish(clientId +"/error", "Class received, but incomplete (cannot found a '{' inside message body)");
+			}
+			
+	
+
+			// kkk JsonNode payload = fromString(new String(message.getPayload(), StandardCharsets.UTF_8));
 			
 		}
-			
-		//arg1.
 	}
-
 }

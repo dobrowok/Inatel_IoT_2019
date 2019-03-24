@@ -1,4 +1,6 @@
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.ZonedDateTime;
@@ -7,23 +9,36 @@ import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.lang.annotation.Target;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.net.URLConnection;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 // http://tutorials.jenkov.com/java/fields.html
 // https://stackify.com/java-logging-best-practices/
 //  
 
-public class Argos {
+public class Argos extends ClassLoader {
 	
-	PropSingleton prop; 
-	CommInterface commInterface;
-	ArgosCV       argosCV;
-	ArgosSensor   argosSensor;
+	//PropSingleton prop; 
+	private String 		   clientId;
+	private CommBase       commInterface;
+	private ArgosCV        argosCV;
+	private ArgosSensor    argosSensor;
+	private Method 		   dynamicMethod = null;
+	private Object 		   dynamicObject = null; 
 	
 	private static final Logger LOGGER = Logger.getLogger(Argos.class.getName());
+	private static final PropSingleton PROP = PropSingleton.INSTANCE;
 	
 	char []buff = new char[50];
-	String temp ;
-	
+	String temp ;	
 	int  buffSize = 50;
 	
 	private void logStart() {
@@ -57,86 +72,137 @@ public class Argos {
 		LOGGER.finer("Finest example on LOGGER handler completed.");
 	}
 	
-	public static String snprintf( int size, String format, Object ... args ) {
-        StringWriter writer = new StringWriter( size );
-        PrintWriter out = new PrintWriter( writer );
-        out.printf( format, args );
-        out.close();
-        return writer.toString();
-    }
 	
-	public void LCDPrint(String text) {
-		  int textLen  = text.length();
-
-		  System.out.println("txtLen=" +textLen +"; buffSize-textLen=" +(buffSize-textLen));
-		  
-		  
-		  temp = snprintf(buffSize-textLen, "%s", buff[textLen]);
-		    
-		    //display.drawStringMaxWidth(0, 0, 128, "kkkkkkkk" /*text.c_str()*/ );
-		  //display.drawString(0, 0, "Hello World");
-		  //display.drawStringMaxWidth(0, 0, 128, "Lorem ipsum\n dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore." );
-		  //display.display();
-
-		  //Serial.print(text);
-		  System.out.printf("%s", buff);
-		}
-	/**
-	 * 
-	 */
 	public Argos() {
+		LOGGER.finest("constructor stub");
 		
-		// TODO Auto-generated constructor stub
-		System.out.println("constructor stub");
 		logStart();
 		
+		clientId = PROP.getProp("client.id");
 		
-		 prop = PropSingleton.INSTANCE;
+		// Path currentRelativePath = Paths.get("");
+		//String s = currentRelativePath.toAbsolutePath().toString();
+		// System.out.println("Current relative path is: " + s);
+
 		
-		 if(prop.getProp("mqtt.type").equals("aws") || prop.getProp("mqtt.type").equals("mosquitto") )
+		
+		 if(PROP.getProp("mqtt.type").equals("aws") || PROP.getProp("mqtt.type").equals("mosquitto") )
 			 commInterface = new CommMQttImpl();
 		 else {
-			 System.out.println("Error! No Comm");
+			 System.out.println("Error! No Comm type allowed!");
 			 System.exit(-1);
 		 }
 		
-		 commInterface.publish("Status", "brá blá");
-		
+	 
+		 MyLoadClass(PROP.getProp("opencv.class"));
 	}
 	
-	public void run() {
+	public void MyLoadClass(String className)  {
+       // if(!"reflection.MyObject".equals(name))
+       //         return super.loadClass(name);
 
-		while (prop.isRunning()) {
-			try {
-				Thread.sleep(5000) ;
-				
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		
-		commInterface.disconnect();
-	}
-	
+        try {
+        	// Get class bytes from file
+            //String url = "file:C:/Users/ekledob/workspace_neon/InatelTCC/MyClass.class";
+        	//String url = "file:MyClass.class";
+        	String url = "file:" +className +".class";
+            URL myUrl = new URL(url);
+            URLConnection connection = myUrl.openConnection();
+            InputStream input = connection.getInputStream();
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            int data = input.read();
 
-	 public static void main(String[] args) {
-		 //System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-		 //Mat mat = Mat.eye(3, 3, CvType.CV_8UC1);
-		 Argos argos = new Argos();
-		 
+            while(data != -1){
+                buffer.write(data);
+                data = input.read();
+            }
 
-		 
-		 System.out.println("Sing = " + PropSingleton.INSTANCE.getInstance());
-		 
-		 System.out.println("mqtt.type = " + PropSingleton.INSTANCE.getProp("mqtt.type")  );
-		 argos.run();
-		 try {
-			Thread.sleep(10000) ;
-		} catch (InterruptedException e) {
+            input.close();
+
+            byte[] classData = buffer.toByteArray();
+
+            Class loadedMyClass =  defineClass(className, classData, 0, classData.length);
+
+			LOGGER.warning("Loaded class name: " + loadedMyClass.getName());
+	        
+	        // Create a new instance from the loaded class
+	        Constructor constructor = null;
+			constructor = loadedMyClass.getConstructor();
+			dynamicObject = constructor.newInstance();
+			
+	        // Getting the target method from the loaded class and invoke it using its name
+			dynamicMethod = loadedMyClass.getMethod("sayHello");
+			
+	        System.out.println("Invoked method name: " + dynamicMethod.getName());
+			dynamicMethod.invoke(dynamicObject);
+			
+        } catch (NoSuchMethodException | SecurityException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			
+        } catch (InstantiationException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		
+		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+	        
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+		
+	public void run() {
+
+		while (PROP.isRunning()) {
+			try {
+				// Received a new class for openCV
+				if(PROP.isNewClassReceived()) {
+					
+					PROP.setProp("opencv.class", PROP.getClassName());
+					MyLoadClass(PROP.getProp("opencv.class"));
+					PROP.setNewClassReceived(false);
+				}
+				
+				if(dynamicMethod != null) {
+					// Getting the target method from the loaded class and invoke it using its name
+			        System.out.println("Invoked method name: " + dynamicMethod.getName());
+			        dynamicMethod.invoke(dynamicObject);
+				}
+				
+				Thread.sleep(5000) ;
+				
+				
+			} catch (InterruptedException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+				e.printStackTrace();
+				// to do
+			}
 		} 
+		
+		commInterface.disconnect();
+		LOGGER.severe("Exit main loop");
+	}
+
+	 public static void main(String[] args) {
+		 Argos argos = new Argos();
 		 
+		 argos.run();
 	 }
 }
+
+/* 
+topic: Win32/class
+
+// Example Class for MQtt 
+public class MyClass4 {
+	
+	public void sayHello() {
+		System.out.println("Hello world from the loaded class4 !!!");
+	}
+
+}
+
+*/
