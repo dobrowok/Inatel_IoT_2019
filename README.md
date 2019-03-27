@@ -9,3 +9,4 @@ Docoument
 - 2019-Mar-15 Java: Mosquitto MQtt client ok! Initiating AWS client.  
 - 2019-Mar-21 Java: Mosquitto MQtt improvement +bug fixes
 - 2019-Mar-24 Java: MQtt class re-factored; MQtt commands implemented; Java class reflection implemented; 
+- 2019-Mar-26 Java: implemented remote restart command;  

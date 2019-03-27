@@ -13,6 +13,7 @@ public enum PropSingleton {
     private String className;
     private boolean running = true;
     private boolean newClassReceived = false;
+    private boolean mustRestart = false;
   
     private PropSingleton(String info) {
         // Get the properties file, or create it if not exist
@@ -77,5 +78,13 @@ public enum PropSingleton {
 
 	public void setClassName(String className) {
 		this.className = className;
+	}
+
+	public boolean mustRestart() {
+		return mustRestart;
+	}
+
+	public void setMustRestart(boolean mustRestart) {
+		this.mustRestart = mustRestart;
 	}
 }

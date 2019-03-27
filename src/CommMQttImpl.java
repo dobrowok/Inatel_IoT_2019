@@ -10,6 +10,7 @@
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.ZonedDateTime;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.paho.client.mqttv3.IMqttClient;
@@ -119,7 +120,7 @@ public class CommMQttImpl extends CommBase implements MqttCallback
             me.printStackTrace();
         }
 		
-		LOGGER.info("Disconnected");
+		LOGGER.info("MQtt disconnected");
 	}
 
 	public void publish(String topic, String message) {
@@ -138,7 +139,14 @@ public class CommMQttImpl extends CommBase implements MqttCallback
             System.out.println("excep "+me);
             me.printStackTrace();
 		}
-        LOGGER.info("pusblish[" +topic +", " +message +"] ");
+        
+        if(topic.toLowerCase().contains("error")) {
+        	LOGGER.severe(topic +": " +message);
+        	
+        } else {
+        	LOGGER.info("pusblish[" +topic +", " +message +"] ");
+        }
+        
 	}
 
 	@Override
@@ -166,8 +174,29 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 			publish(clientId +"/Status", "received 'exit' command");
 			PROP.setRunning(false);
 			
-		}
-		else if(topic.toLowerCase().contains("class")) {
+		} else if(topic.toLowerCase().contains("restart")) {
+			publish(clientId +"/Status", "received 'restart' command");
+			PROP.setMustRestart(true);
+			PROP.setRunning(false);
+		
+		// Change a configuration to file and restart
+		} else if(topic.toLowerCase().contains("write")) {
+			int Equals = message.toString().indexOf('=');
+			
+			if(Equals>0) {
+				String parts[] = message.toString().substring(0, Equals)
+						                .split(" ");
+				String filename = parts[parts.length-1]; // Get last name before the '{'
+				filename += ".java";
+				
+			} else {
+				publish(clientId +"/Status", "write parameter [" +message.toString() +"]");
+				PROP.setMustRestart(true);
+				PROP.setRunning(false);
+
+			}
+
+		} else if(topic.toLowerCase().contains("class")) {
 			String filename = null;
 			
 			// 1- Extract the class name			
@@ -189,12 +218,10 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 				    
 				} catch (IOException ioe) {
 				    ioe.printStackTrace();
-				    LOGGER.severe("Saving class failed due to: [" +ioe.getMessage() +"]");
-				    publish(clientId +"/error", ioe.getMessage());
+				    publish(clientId +"/error", "Saving class failed due to: [" +ioe.getMessage() +"]");
 				}
 				
 			}else {
-				LOGGER.severe("Class received, but incomplete (cannot found a '{' inside message body);");
 				publish(clientId +"/error", "Class received, but incomplete (cannot found a '{' inside message body)");
 			}
 			

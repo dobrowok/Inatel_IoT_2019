@@ -1,4 +1,5 @@
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -10,6 +11,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.lang.annotation.Target;
+import java.lang.management.ManagementFactory;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -22,7 +24,7 @@ import java.nio.file.Paths;
 
 // http://tutorials.jenkov.com/java/fields.html
 // https://stackify.com/java-logging-best-practices/
-//  
+// https://dzone.com/articles/programmatically-restart-java
 
 public class Argos extends ClassLoader {
 	
@@ -72,10 +74,8 @@ public class Argos extends ClassLoader {
 		LOGGER.finer("Finest example on LOGGER handler completed.");
 	}
 	
-	
+	// Start up
 	public Argos() {
-		LOGGER.finest("constructor stub");
-		
 		logStart();
 		
 		clientId = PROP.getProp("client.id");
@@ -83,8 +83,6 @@ public class Argos extends ClassLoader {
 		// Path currentRelativePath = Paths.get("");
 		//String s = currentRelativePath.toAbsolutePath().toString();
 		// System.out.println("Current relative path is: " + s);
-
-		
 		
 		 if(PROP.getProp("mqtt.type").equals("aws") || PROP.getProp("mqtt.type").equals("mosquitto") )
 			 commInterface = new CommMQttImpl();
@@ -93,19 +91,19 @@ public class Argos extends ClassLoader {
 			 System.exit(-1);
 		 }
 		
-	 
+		 // Load the OpenCV class 
 		 MyLoadClass(PROP.getProp("opencv.class"));
 	}
 	
+	// Reflection: load a class in real-time
 	public void MyLoadClass(String className)  {
-       // if(!"reflection.MyObject".equals(name))
-       //         return super.loadClass(name);
-
+		String url = null;
+		
         try {
         	// Get class bytes from file
             //String url = "file:C:/Users/ekledob/workspace_neon/InatelTCC/MyClass.class";
         	//String url = "file:MyClass.class";
-        	String url = "file:" +className +".class";
+        	url = "file:" +className +".class";
             URL myUrl = new URL(url);
             URLConnection connection = myUrl.openConnection();
             InputStream input = connection.getInputStream();
@@ -150,12 +148,14 @@ public class Argos extends ClassLoader {
 	        
         } catch (MalformedURLException e) {
             e.printStackTrace();
+            
         } catch (IOException e) {
             e.printStackTrace();
+            commInterface.publish("Error", "Not loaded class [" +url +"]: " +e.getMessage());
         }
     }
 		
-	public void run() {
+	boolean run() {
 
 		while (PROP.isRunning()) {
 			try {
@@ -184,20 +184,28 @@ public class Argos extends ClassLoader {
 		
 		commInterface.disconnect();
 		LOGGER.severe("Exit main loop");
+		return PROP.mustRestart();
 	}
 
 	 public static void main(String[] args) {
-		 Argos argos = new Argos();
+		 boolean shouldRestart = true;
 		 
-		 argos.run();
+		 // Enable a complete restart of this program, by a remote MQtt command
+		 while(shouldRestart) {
+			 Argos argos = new Argos();
+			 
+			 shouldRestart = argos.run();			 
+			 System.gc();
+		 }
 	 }
 }
 
-/* 
-topic: Win32/class
+/*  Example of OpenCV dummy class for MQtt:
+ * 
+ *  
+    topic: Win32/class
 
-// Example Class for MQtt 
-public class MyClass4 {
+    public class MyClass4 {
 	
 	public void sayHello() {
 		System.out.println("Hello world from the loaded class4 !!!");

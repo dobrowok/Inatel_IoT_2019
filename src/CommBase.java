@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.StringJoiner;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public abstract class CommBase {
@@ -57,8 +58,8 @@ public abstract class CommBase {
 	        result = sj.toString();
 	        
 	        if(exitCode != 0) {
-				LOGGER.severe("Compile failed due to : [" +result +"]");
-				publish(clientId +"/error", "Compile failed due to : [" +result +"]");
+				publish(clientId +"/Error", "Compile failed due to : [" +result +"]");
+				
 			} else {
 				PROP.setNewClassReceived(true);
 				PROP.setClassName(className.substring(0, className.lastIndexOf('.'))); // class without '.java'
