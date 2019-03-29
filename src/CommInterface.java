@@ -10,4 +10,5 @@ public interface CommInterface {
     public void publish(String topic, String message);
     public void process();
 	public void disconnect();
+	public boolean isConnected();
 }

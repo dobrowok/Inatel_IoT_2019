@@ -10,22 +10,14 @@
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.ZonedDateTime;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.eclipse.paho.client.mqttv3.IMqttClient;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
-import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
-import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
-import org.eclipse.paho.client.mqttv3.MqttPersistenceException;
-import org.eclipse.paho.client.mqttv3.MqttSecurityException;
-import org.eclipse.paho.client.mqttv3.MqttTopic;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
 
@@ -33,9 +25,9 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 {
 	// MQtt stuff
 	private String mqttType;
-	private int    qos= 2;
+	private int    QoS= 0;
 	private String broker;
-	private String content  = "Starting up: ";
+	private String subscribeTo;
 	private String capath;
 	private String certpath;
 	private String keypath;
@@ -53,8 +45,8 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 		
 		
 		mqttType    = PROP.getProp("mqtt.type");
-		PROP.getProp("mqtt.base.topic");
 		clientId    = PROP.getProp("client.id");
+		subscribeTo = PROP.getProp("mqtt.subscribe.to");
 
 		publishInterval = Integer.parseInt(PROP.getProp("mqtt.publish.interval"));
 		
@@ -78,59 +70,73 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 			sampleClient.setCallback(this);
 			
 	        MqttConnectOptions options = new MqttConnectOptions();
-	        //options.setCleanSession(true);
+	        options.setCleanSession(true);
+	        //options.setConnectionTimeout(10);
+	        options.setKeepAliveInterval(60);
 	        //options.setAutomaticReconnect(true);
 	        
 	       // options.setSocketFactory(SslUtil.getSocketFactory("caFilePath", "clientCrtFilePath", "clientKeyFilePath", "password"));
 	        
-	        LOGGER.warning("Connecting to broker: "+broker);
-	        sampleClient.connect(options);
-	        
-	        content += ZonedDateTime.now();
+	        LOGGER.warning("Connecting to broker [" +broker +"]");	        
+	        sampleClient.connect(options).waitForCompletion();
+
+	        String content = "" +ZonedDateTime.now();
 	        publish(clientId +"/Status", "Connected...[" +content +"]");
 	        
-	        sampleClient.subscribe(clientId +"/#", 2 /* QoS*/);
-	        LOGGER.info("subscribe[" +clientId +"/#]");
-	        
-	        
-	    } catch(MqttException me) {
-	        System.out.println("reason "+me.getReasonCode());
-	        System.out.println("msg "+me.getMessage());
-	        System.out.println("loc "+me.getLocalizedMessage());
-	        System.out.println("cause "+me.getCause());
-	        System.out.println("excep "+me);
+	        LOGGER.warning("subscribing to [" +subscribeTo +"]");
+	        sampleClient.subscribe(subscribeTo, QoS).waitForCompletion();
+
+		} catch(MqttException me) {
+	    	
+	        System.out.println("reason " +me.getReasonCode());
+	        System.out.println("msg "    +me.getMessage());
+	        System.out.println("loc "    +me.getLocalizedMessage());
+	        System.out.println("cause "  +me.getCause());
+	        System.out.println("excep "  +me);
 	        me.printStackTrace();
 	        LOGGER.severe("Error connecting to [" +broker +"]");
 	        PROP.setRunning(false);
 	    }		
 	}
 
+	@Override
+	public boolean isConnected() {
+		return sampleClient.isConnected();
+	}
+	
+	@Override
 	public void disconnect() {
-		
-		try {
-			publish(clientId +"/Status", "Disconnecting..." +ZonedDateTime.now());
-			sampleClient.disconnect();
-			
-		} catch(MqttException me) {
-            System.out.println("reason "+me.getReasonCode());
-            System.out.println("msg "+me.getMessage());
-            System.out.println("loc "+me.getLocalizedMessage());
-            System.out.println("cause "+me.getCause());
-            System.out.println("excep "+me);
-            me.printStackTrace();
-        }
+		if(sampleClient.isConnected()) {
+			try {
+				publish(clientId +"/Status", "Disconnecting..." +ZonedDateTime.now());
+				sampleClient.disconnect();
+				
+			} catch(MqttException me) {
+	            System.out.println("reason "+me.getReasonCode());
+	            System.out.println("msg "+me.getMessage());
+	            System.out.println("loc "+me.getLocalizedMessage());
+	            System.out.println("cause "+me.getCause());
+	            System.out.println("excep "+me);
+	            me.printStackTrace();
+	        }
+		}
 		
 		LOGGER.info("MQtt disconnected");
 	}
 
+	@Override
 	public void publish(String topic, String message) {
+		
+		if(!sampleClient.isConnected()) {
+			LOGGER.warning("Cannot 'publish': MQtt is disconnected");
+			return;
+		}
+		
         MqttMessage mqTTmessage = new MqttMessage(message.getBytes());
-        mqTTmessage.setQos(qos);
+        mqTTmessage.setQos(QoS);
         try {
 			sampleClient.publish(topic, mqTTmessage);
-		} catch (MqttPersistenceException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			
 		} catch (MqttException me) {
             System.out.println("reason "+me.getReasonCode());
             System.out.println("msg "+me.getMessage());
@@ -144,21 +150,18 @@ public class CommMQttImpl extends CommBase implements MqttCallback
         	LOGGER.severe(topic +": " +message);
         	
         } else {
-        	LOGGER.info("pusblish[" +topic +", " +message +"] ");
-        }
-        
+        	LOGGER.warning("pusblish[" +topic +", " +message +"] ");
+        }        
 	}
 
 	@Override
 	public void process() {
-		LOGGER.info("process[]");
+		LOGGER.warning("process[]");
 	}
 	
 	@Override
 	public void connectionLost(Throwable arg0) {
-		LOGGER.info("connectionLost[]");
-		// Connect again
-		connect();
+		LOGGER.warning("connectionLost[]");
 	}
 	
 	@Override
@@ -168,9 +171,12 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 	
 	@Override
 	public void messageArrived(String topic, MqttMessage message) throws Exception {
-		LOGGER.finer("messageArrived["+topic +"] => " +message.toString().substring(0, 30) );
+		LOGGER.warning("messageArrived["+topic +"] =>" +message.toString());
 		
-		if(topic.toLowerCase().contains("exit")) {
+		if(topic.toLowerCase().contains("status") || topic.toLowerCase().contains("error") ) {
+			return;
+		
+		} else if(topic.toLowerCase().contains("exit")) {
 			publish(clientId +"/Status", "received 'exit' command");
 			PROP.setRunning(false);
 			
@@ -191,7 +197,7 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 				
 			} else {
 				publish(clientId +"/Status", "write parameter [" +message.toString() +"]");
-				PROP.setMustRestart(true);
+				PROP.setMustRestart(true); // kkk falta!
 				PROP.setRunning(false);
 
 			}
@@ -205,6 +211,7 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 				String parts[] = message.toString().substring(0, Bracket)
 										.split(" ");
 				filename = parts[parts.length-1]; // Get last name before the '{'
+				PROP.setClassName(filename);
 				filename += ".java";
 				
 				// 2- Save to the file
@@ -212,10 +219,8 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 				    fos.write(message.getPayload());
 					LOGGER.info("Saving to: " +System.getProperty("user.dir") +"/" +filename );
 					publish(clientId +"/Status", "received new class [" +filename +"]");
+					PROP.setNewClassReceived(true);
 					
-					// 3- Try to compile file
-					compile(filename);
-				    
 				} catch (IOException ioe) {
 				    ioe.printStackTrace();
 				    publish(clientId +"/error", "Saving class failed due to: [" +ioe.getMessage() +"]");

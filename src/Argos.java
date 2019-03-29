@@ -1,26 +1,20 @@
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.time.ZonedDateTime;
+import java.io.InputStreamReader;
+import java.util.StringJoiner;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
-import java.lang.annotation.Target;
-import java.lang.management.ManagementFactory;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.net.URLConnection;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 // http://tutorials.jenkov.com/java/fields.html
 // https://stackify.com/java-logging-best-practices/
@@ -43,6 +37,30 @@ public class Argos extends ClassLoader {
 	String temp ;	
 	int  buffSize = 50;
 	
+	// Start up
+	public Argos() {
+			logStart();
+			
+			clientId = PROP.getProp("client.id");
+			PROP.setRunning(true);
+			
+			// Path currentRelativePath = Paths.get("");
+			//String s = currentRelativePath.toAbsolutePath().toString();
+			// System.out.println("Current relative path is: " + s);
+			
+			 if(PROP.getProp("mqtt.type").equals("aws") || PROP.getProp("mqtt.type").equals("mosquitto") )
+				 commInterface = new CommMQttImpl();
+			 
+			 else {
+				 System.out.println("Error! No Comm type allowed!");
+				 System.exit(-1);
+			 }
+			
+			 // Load the OpenCV class 
+			 MyLoadClass(PROP.getProp("opencv.class"));
+			 
+		}
+		
 	private void logStart() {
 		Handler consoleHandler = null;
 		Handler fileHandler  = null;
@@ -65,7 +83,7 @@ public class Argos extends ClassLoader {
 			//Console handler removed
 			LOGGER.removeHandler(consoleHandler);
 			
-			LOGGER.log(Level.FINE, "Finer logged");
+			LOGGER.log(Level.ALL, "Finer logged");
 			
 		}catch(IOException exception){
 			LOGGER.log(Level.SEVERE, "Error occur in FileHandler.", exception);
@@ -74,29 +92,59 @@ public class Argos extends ClassLoader {
 		LOGGER.finer("Finest example on LOGGER handler completed.");
 	}
 	
-	// Start up
-	public Argos() {
-		logStart();
+	private boolean compile(String className) {
+		boolean isWindows = System.getProperty("os.name")
+				  				   .toLowerCase().startsWith("windows");
+		// javac -cp . PropSingleton.java
+		String javac = "javac -cp . " +className;
+		String javacParams[] = javac.split(" ");
 		
-		clientId = PROP.getProp("client.id");
+		if (isWindows) {	    
+			// blabla
+		} else {
+		    // blabla
+		}
 		
-		// Path currentRelativePath = Paths.get("");
-		//String s = currentRelativePath.toAbsolutePath().toString();
-		// System.out.println("Current relative path is: " + s);
+		ProcessBuilder builder = new ProcessBuilder();//.inheritIO();
+		builder.command(javacParams);
+
+		// builder.directory(new File(System.getProperty("user.home")));
 		
-		 if(PROP.getProp("mqtt.type").equals("aws") || PROP.getProp("mqtt.type").equals("mosquitto") )
-			 commInterface = new CommMQttImpl();
-		 else {
-			 System.out.println("Error! No Comm type allowed!");
-			 System.exit(-1);
-		 }
-		
-		 // Load the OpenCV class 
-		 MyLoadClass(PROP.getProp("opencv.class"));
+		String result = "";
+		try {
+			LOGGER.info("Going to execute : " +javac);
+			
+			final Process process = builder.start();			
+			int exitCode = process.waitFor();
+			
+		    // get compile command output
+			InputStream is = process.getErrorStream();  
+		    InputStreamReader isr = new InputStreamReader(is);  
+		    BufferedReader br = new BufferedReader(isr);  
+		    
+		    StringJoiner sj = new StringJoiner(System.getProperty("line.separator"));	        
+			br.lines().iterator().forEachRemaining(sj::add);
+	        result = sj.toString();
+	        
+	        if(exitCode != 0) {
+				commInterface.publish(clientId +"/Error", "Compile failed due to : [" +result +"]");
+				
+			} else {
+				PROP.setNewClassReceived(true);
+				PROP.setClassName(className.substring(0, className.lastIndexOf('.'))); // class without '.java'
+			}
+	        
+			return true;
+	        
+		} catch (IOException | InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			return false;
+		}
 	}
 	
 	// Reflection: load a class in real-time
-	public void MyLoadClass(String className)  {
+	public boolean MyLoadClass(String className)  {
 		String url = null;
 		
         try {
@@ -119,6 +167,7 @@ public class Argos extends ClassLoader {
 
             byte[] classData = buffer.toByteArray();
 
+            // Hint: for loading 'MyClass.java' you should use 'MyClass' without any extension
             Class loadedMyClass =  defineClass(className, classData, 0, classData.length);
 
 			LOGGER.warning("Loaded class name: " + loadedMyClass.getName());
@@ -129,41 +178,40 @@ public class Argos extends ClassLoader {
 			dynamicObject = constructor.newInstance();
 			
 	        // Getting the target method from the loaded class and invoke it using its name
-			dynamicMethod = loadedMyClass.getMethod("sayHello");
+			dynamicMethod = loadedMyClass.getMethod("execute");
 			
 	        System.out.println("Invoked method name: " + dynamicMethod.getName());
 			dynamicMethod.invoke(dynamicObject);
 			
-        } catch (NoSuchMethodException | SecurityException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			// All gone well: save the new class name
+			PROP.setProp("opencv.class", className);
 			
-        } catch (InstantiationException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		
-		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-			// TODO Auto-generated catch block
+			commInterface.publish(clientId +"/Status", "Loaded successfully OpenCV class [" +className +"]");
+			return true;
+			
+        } catch (LinkageError | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | IOException | NoSuchMethodException | SecurityException e) {
 			e.printStackTrace();
-	        
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-            
-        } catch (IOException e) {
-            e.printStackTrace();
-            commInterface.publish("Error", "Not loaded class [" +url +"]: " +e.getMessage());
-        }
+			commInterface.publish(clientId +"/Error", e.getClass().getName()  +" [" +e.getMessage() +"]");
+			return false;
+        } 
     }
 		
 	boolean run() {
 
-		while (PROP.isRunning()) {
+		while (PROP.shouldKeepRunning() && commInterface.isConnected() ) {
 			try {
 				// Received a new class for openCV
-				if(PROP.isNewClassReceived()) {
+				if(PROP.isNewClassArrived()) {
+					// 1- Try to compile file
+					if(compile(PROP.getClassName() +".java") == false) {
+						LOGGER.severe("Could not compile [" +PROP.getClassName() +"]");
+					}
 					
-					PROP.setProp("opencv.class", PROP.getClassName());
-					MyLoadClass(PROP.getProp("opencv.class"));
+					// 2- Try to load it
+					else if(MyLoadClass(PROP.getClassName()) == false) {
+						// Error! recover old 
+						MyLoadClass(PROP.getProp("opencv.original.class")); 
+					}
 					PROP.setNewClassReceived(false);
 				}
 				
@@ -171,6 +219,7 @@ public class Argos extends ClassLoader {
 					// Getting the target method from the loaded class and invoke it using its name
 			        System.out.println("Invoked method name: " + dynamicMethod.getName());
 			        dynamicMethod.invoke(dynamicObject);
+			        commInterface.publish(clientId +"/Status", "Invoked method name: " + dynamicMethod.getName());
 				}
 				
 				Thread.sleep(5000) ;
@@ -178,25 +227,37 @@ public class Argos extends ClassLoader {
 				
 			} catch (InterruptedException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 				e.printStackTrace();
-				// to do
+
+				dynamicMethod = null;			
+				System.out.println(e.getClass().getName());
+				commInterface.publish(clientId +"/Error", e.getClass().getName());
 			}
 		} 
 		
 		commInterface.disconnect();
-		LOGGER.severe("Exit main loop");
-		return PROP.mustRestart();
+		boolean mustRestart = PROP.mustRestart();
+		LogManager.getLogManager().reset();
+		
+		LOGGER.severe("Exit main loop due to: " +(PROP.shouldKeepRunning() ? "is not connected anymore" : " decided o die" ));
+		return mustRestart;
 	}
-
+	
 	 public static void main(String[] args) {
-		 boolean shouldRestart = true;
+		 boolean shouldRestart = false;
 		 
 		 // Enable a complete restart of this program, by a remote MQtt command
-		 while(shouldRestart) {
-			 Argos argos = new Argos();
+		 do 
+		 {
+			 Argos argos = new Argos();			 
+			 shouldRestart = argos.run();
+			 argos = null;
+			 //MQTTtest test = new MQTTtest(); 
 			 
-			 shouldRestart = argos.run();			 
-			 System.gc();
-		 }
+			 //test.crun();
+			 //System.gc();
+		 } while(shouldRestart);
+		 
+		 System.exit(0);
 	 }
 }
 
@@ -207,10 +268,9 @@ public class Argos extends ClassLoader {
 
     public class MyClass4 {
 	
-	public void sayHello() {
-		System.out.println("Hello world from the loaded class4 !!!");
+		public void execute() {
+			System.out.println("Hello world from the loaded class4 !!!");
+		}
 	}
-
-}
 
 */

@@ -1,5 +1,7 @@
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Properties;
 
 // https://www.devmedia.com.br/utilizando-arquivos-de-propriedades-no-java/25546
@@ -8,6 +10,7 @@ import java.util.Properties;
 public enum PropSingleton {
     
     INSTANCE("Initial class info"); 
+	static final String FILENAME = "argos.properties";
   
     private Properties props;
     private String className;
@@ -26,11 +29,12 @@ public enum PropSingleton {
         while (true) {
     		try {
         	    // Create a file if it don´t exist
-    			new FileOutputStream("argos.properties", true).close();
+    			new FileOutputStream(FILENAME, true).close();
     			
     			file = new FileInputStream("argos.properties");
     			props.load(file);
     			System.out.println(props.getProperty("prop.server.login"));
+    			mustRestart = false;
     			
         	    break;
         	    
@@ -54,9 +58,16 @@ public enum PropSingleton {
 
 	public void setProp(String key, String value) {
 		props.setProperty(key, value);
+		
+        try {
+			props.store(new FileOutputStream(FILENAME), null);
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
     }
 
-	public boolean isRunning() {
+	public boolean shouldKeepRunning() {
 		return running;
 	}
 
@@ -64,7 +75,7 @@ public enum PropSingleton {
 		this.running = running;
 	}
 
-	public boolean isNewClassReceived() {
+	public boolean isNewClassArrived() {
 		return newClassReceived;
 	}
 
