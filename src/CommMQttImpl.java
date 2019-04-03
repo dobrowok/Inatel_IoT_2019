@@ -31,7 +31,6 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 	private String capath;
 	private String certpath;
 	private String keypath;
-	private int publishInterval;
 	private MqttAsyncClient sampleClient;
 	private MemoryPersistence persistence = new MemoryPersistence();
 	private String tmpDir;
@@ -48,9 +47,6 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 		clientId    = PROP.getProp("client.id");
 		subscribeTo = PROP.getProp("mqtt.subscribe.to");
 
-		publishInterval = Integer.parseInt(PROP.getProp("mqtt.publish.interval"));
-		
-		
 		if(mqttType.equals("aws")) {
 			broker	 = PROP.getProp("mqtt.aws.broker");
 			capath   = PROP.getProp("mqtt.aws.capath");
@@ -187,19 +183,19 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 		
 		// Change a configuration to file and restart
 		} else if(topic.toLowerCase().contains("write")) {
-			int Equals = message.toString().indexOf('=');
+			String temp =  message.toString();
+			int Equals = temp.indexOf('=');
 			
 			if(Equals>0) {
-				String parts[] = message.toString().substring(0, Equals)
-						                .split(" ");
-				String filename = parts[parts.length-1]; // Get last name before the '{'
-				filename += ".java";
+				String parts[] = temp.split("=");
+
+				PROP.setProp(parts[0], parts[1]);
+
+				publish(clientId +"/Status", "write parameter [" +message.toString() +"]");
+				PROP.setMustRestart(true);
 				
 			} else {
-				publish(clientId +"/Status", "write parameter [" +message.toString() +"]");
-				PROP.setMustRestart(true); // kkk falta!
-				PROP.setRunning(false);
-
+				publish(clientId +"/Status", "Error on writing parameter [" +message.toString() +"]");
 			}
 
 		} else if(topic.toLowerCase().contains("class")) {

@@ -1,7 +1,10 @@
 # Inatel_IoT_2019
 Inatel Internet of Things 2019, Undergraduate Thesis
 
-Docoument
+Document: 
+   Busca de pessoas em Rasperby PI (Introdução, IOT018, Kleber Dobrowolski).docx
+   
+Progress:
 
 - 2019-Feb-20 GITHub environment setup
 - 2019-Mar-09 Amazon AWS setup
@@ -12,5 +15,6 @@ Docoument
 - 2019-Mar-26 Java: implemented remote 'restart' command; 
 - 2019-Mar-28 Java: bug fixed
 - 2019-Mar-28 Java: implemented Command 'exit' +bug fixes
+- 2019-Apr-02 Java: starting OpenCV class +bug fixes (command 'write')
  
  

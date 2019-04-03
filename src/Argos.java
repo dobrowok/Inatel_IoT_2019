@@ -24,6 +24,7 @@ public class Argos extends ClassLoader {
 	
 	//PropSingleton prop; 
 	private String 		   clientId;
+	private int            publishInterval;
 	private CommBase       commInterface;
 	private ArgosCV        argosCV;
 	private ArgosSensor    argosSensor;
@@ -42,6 +43,13 @@ public class Argos extends ClassLoader {
 			logStart();
 			
 			clientId = PROP.getProp("client.id");
+			try {
+				publishInterval =  Integer.parseInt(PROP.getProp("mqtt.publish.interval.ms"));
+				
+			} catch (NumberFormatException e) {
+				publishInterval =  15000;
+				System.out.println("Error! Default publishInterval= " +publishInterval);
+			}
 			PROP.setRunning(true);
 			
 			// Path currentRelativePath = Paths.get("");
@@ -57,8 +65,12 @@ public class Argos extends ClassLoader {
 			 }
 			
 			 // Load the OpenCV class 
-			 MyLoadClass(PROP.getProp("opencv.class"));
+			 if(MyLoadClass(PROP.getProp("opencv.class")) == false) {
+					// Error! recover old 
+					MyLoadClass(PROP.getProp("opencv.original.class")); 
+			 }
 			 
+			 argosCV = new ArgosCV();
 		}
 		
 	private void logStart() {
@@ -180,7 +192,7 @@ public class Argos extends ClassLoader {
 	        // Getting the target method from the loaded class and invoke it using its name
 			dynamicMethod = loadedMyClass.getMethod("execute");
 			
-	        System.out.println("Invoked method name: " + dynamicMethod.getName());
+	        //System.out.println("Invoked method name: " + dynamicMethod.getName());
 			dynamicMethod.invoke(dynamicObject);
 			
 			// All gone well: save the new class name
@@ -222,7 +234,7 @@ public class Argos extends ClassLoader {
 			        commInterface.publish(clientId +"/Status", "Invoked method name: " + dynamicMethod.getName());
 				}
 				
-				Thread.sleep(5000) ;
+				Thread.sleep(publishInterval) ;
 				
 				
 			} catch (InterruptedException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {

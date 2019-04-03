@@ -1,5 +1,5 @@
 /* 
- * https://dzone.com/articles/introduction-to-json-with-javahttps://dzone.com/articles/introduction-to-json-with-java
+ * https://dzone.com/articles/introduction-to-json-with-java
  *  
  * 	
  */
@@ -9,14 +9,14 @@ import java.util.Arrays;
 public class ArgosSensor {
 	
 	/*
-	public void  getJson() {
+	public JSONObject  getJson() {
 		JSONObject jo = new JSONObject();
 		jo.put("name", "jon doe");
 		jo.put("age", "22");
 		jo.put("city", "chicago");
-	}
+	} */
 	
-	
+	/*
 	 private static void buildJsonUsingObjectModelApi() {
 		  System.out.println("Json Building using Object Model API");
 		  JsonArray jsonArray =
