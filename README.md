@@ -16,5 +16,7 @@ Progress:
 - 2019-Mar-28 Java: bug fixed
 - 2019-Mar-28 Java: implemented Command 'exit' +bug fixes
 - 2019-Apr-02 Java: starting OpenCV class +bug fixes (command 'write')
+- 2019-Apr-02 Java: openCV save file (starting)
+- 2019-Apr-05 Java: openCV detect start; command 'snapshot' implemented; +bug fixes
  
  

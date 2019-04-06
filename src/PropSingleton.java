@@ -1,8 +1,13 @@
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.Properties;
+import java.util.TreeSet;
 
 // https://www.devmedia.com.br/utilizando-arquivos-de-propriedades-no-java/25546
 // https://dzone.com/articles/java-singletons-using-enum
@@ -14,9 +19,12 @@ public enum PropSingleton {
   
     private Properties props;
     private String className;
-    private boolean running = true;
-    private boolean newClassReceived = false;
-    private boolean mustRestart = false;
+    private String pictureName =        null;
+    public  byte[] imageInByte =        null;
+    private boolean running =			true;
+    private boolean newClassReceived =	false;
+    private boolean mustRestart =		false;
+	private boolean doSnap =			false;
   
     private PropSingleton(String info) {
         // Get the properties file, or create it if not exist
@@ -60,7 +68,16 @@ public enum PropSingleton {
 		props.setProperty(key, value);
 		
         try {
-			props.store(new FileOutputStream(FILENAME), null);
+			// props.store(new FileOutputStream(FILENAME), null);
+			
+			Properties tmp = new Properties() {
+			    @Override
+			    public synchronized Enumeration<Object> keys() {
+			        return Collections.enumeration(new TreeSet<Object>(super.keySet()));
+			    }
+			};
+			tmp.putAll(props);
+			tmp.store(new FileWriter(FILENAME), null);
 			
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -97,5 +114,21 @@ public enum PropSingleton {
 
 	public void setMustRestart(boolean mustRestart) {
 		this.mustRestart = mustRestart;
+	}
+
+	public boolean mustSnap() {
+		return doSnap;
+	}
+	
+	public void setSnap(boolean b) {
+		this.doSnap = b;
+	}
+	
+	public String getPictureName() {
+		return pictureName;
+	}
+
+	public void setPictureName(String s) {
+		this.pictureName = s;
 	}
 }

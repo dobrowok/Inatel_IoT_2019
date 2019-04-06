@@ -1,7 +1,6 @@
 
 public abstract class CommBase {
 	
-	protected String clientId;
 	//public void process() throws IOException {
 		// TODO Auto-generated method stub
 	//	}
@@ -12,4 +11,5 @@ public abstract class CommBase {
     public abstract void    process();
 	public abstract void    disconnect();
 	public abstract boolean isConnected();
+	public abstract long    getPublishInterval();
 }

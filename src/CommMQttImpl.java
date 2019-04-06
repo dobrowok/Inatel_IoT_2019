@@ -9,6 +9,7 @@
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.time.ZonedDateTime;
 import java.util.logging.Logger;
 
@@ -26,8 +27,10 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 	// MQtt stuff
 	private String mqttType;
 	private int    QoS= 0;
+	private long   publishInterval = 15000;
 	private String broker;
 	private String subscribeTo;
+	private String clientId;
 	private String capath;
 	private String certpath;
 	private String keypath;
@@ -37,6 +40,10 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 	private final static Logger LOGGER = Logger.getLogger("CommMQttImpl");
 	
 	private final static PropSingleton PROP = PropSingleton.INSTANCE; 
+	
+	public long getPublishInterval() {
+		return publishInterval;
+	}
 
 	public CommMQttImpl() {
 		tmpDir = System.getProperty("java.io.tmpdir"); // Temp dir
@@ -44,8 +51,15 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 		
 		
 		mqttType    = PROP.getProp("mqtt.type");
-		clientId    = PROP.getProp("client.id");
+		clientId    = PROP.getProp("mqtt.client.id");
 		subscribeTo = PROP.getProp("mqtt.subscribe.to");
+		try {
+			publishInterval =  Integer.parseInt(PROP.getProp("mqtt.publish.interval.ms"));
+			
+		} catch (NumberFormatException e) {
+			publishInterval =  15000;
+			System.out.println("Error! Default publishInterval= " +publishInterval);
+		}
 
 		if(mqttType.equals("aws")) {
 			broker	 = PROP.getProp("mqtt.aws.broker");
@@ -76,9 +90,10 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 	        LOGGER.warning("Connecting to broker [" +broker +"]");	        
 	        sampleClient.connect(options).waitForCompletion();
 
-	        String content = "" +ZonedDateTime.now();
-	        publish(clientId +"/Status", "Connected...[" +content +"]");
+	        String now = new Timestamp(System.currentTimeMillis()).toString();
+	        publish("/status", "Connected...[" +now +"]");
 	        
+	        PROP.setProp("mqtt.startup", now );
 	        LOGGER.warning("subscribing to [" +subscribeTo +"]");
 	        sampleClient.subscribe(subscribeTo, QoS).waitForCompletion();
 
@@ -104,7 +119,7 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 	public void disconnect() {
 		if(sampleClient.isConnected()) {
 			try {
-				publish(clientId +"/Status", "Disconnecting..." +ZonedDateTime.now());
+				publish("/status", "Disconnecting..." +ZonedDateTime.now());
 				sampleClient.disconnect();
 				
 			} catch(MqttException me) {
@@ -120,6 +135,7 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 		LOGGER.info("MQtt disconnected");
 	}
 
+	
 	@Override
 	public void publish(String topic, String message) {
 		
@@ -131,7 +147,7 @@ public class CommMQttImpl extends CommBase implements MqttCallback
         MqttMessage mqTTmessage = new MqttMessage(message.getBytes());
         mqTTmessage.setQos(QoS);
         try {
-			sampleClient.publish(topic, mqTTmessage);
+			sampleClient.publish(clientId +topic, mqTTmessage);
 			
 		} catch (MqttException me) {
             System.out.println("reason "+me.getReasonCode());
@@ -146,7 +162,7 @@ public class CommMQttImpl extends CommBase implements MqttCallback
         	LOGGER.severe(topic +": " +message);
         	
         } else {
-        	LOGGER.warning("pusblish[" +topic +", " +message +"] ");
+        	LOGGER.warning("pusblish[" +clientId +topic +", " +message +"] ");
         }        
 	}
 
@@ -169,19 +185,26 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 	public void messageArrived(String topic, MqttMessage message) throws Exception {
 		LOGGER.warning("messageArrived["+topic +"] =>" +message.toString());
 		
-		if(topic.toLowerCase().contains("status") || topic.toLowerCase().contains("error") ) {
+		// These messages comes from Java to MQtt server, so should not be processed
+		if(topic.toLowerCase().contains("status") || topic.toLowerCase().contains("error") || topic.toLowerCase().contains("image") ) {
 			return;
 		
 		} else if(topic.toLowerCase().contains("exit")) {
-			publish(clientId +"/Status", "received 'exit' command");
+			publish("/status", "received 'exit' command");
 			PROP.setRunning(false);
 			
 		} else if(topic.toLowerCase().contains("restart")) {
-			publish(clientId +"/Status", "received 'restart' command");
+			publish("/status", "received 'restart' command");
 			PROP.setMustRestart(true);
 			PROP.setRunning(false);
+			
+		} else if(topic.toLowerCase().contains("snapshot")) {
+			PROP.setSnap(true);
+
+		} else if(topic.toLowerCase().contains("get")) {
+			publish("/status", PROP.getProp(message.toString()));
 		
-		// Change a configuration to file and restart
+		// Change a configuration to properties file and restart
 		} else if(topic.toLowerCase().contains("write")) {
 			String temp =  message.toString();
 			int Equals = temp.indexOf('=');
@@ -191,11 +214,11 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 
 				PROP.setProp(parts[0], parts[1]);
 
-				publish(clientId +"/Status", "write parameter [" +message.toString() +"]");
+				publish("/status", "write parameter [" +message.toString() +"]");
 				PROP.setMustRestart(true);
 				
 			} else {
-				publish(clientId +"/Status", "Error on writing parameter [" +message.toString() +"]");
+				publish("/status", "Error on writing parameter [" +message.toString() +"]");
 			}
 
 		} else if(topic.toLowerCase().contains("class")) {
@@ -214,16 +237,16 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 				try (FileOutputStream fos = new FileOutputStream(filename)) {
 				    fos.write(message.getPayload());
 					LOGGER.info("Saving to: " +System.getProperty("user.dir") +"/" +filename );
-					publish(clientId +"/Status", "received new class [" +filename +"]");
+					publish("/status", "received new class [" +filename +"]");
 					PROP.setNewClassReceived(true);
 					
 				} catch (IOException ioe) {
 				    ioe.printStackTrace();
-				    publish(clientId +"/error", "Saving class failed due to: [" +ioe.getMessage() +"]");
+				    publish("/error", "Saving class failed due to: [" +ioe.getMessage() +"]");
 				}
 				
 			}else {
-				publish(clientId +"/error", "Class received, but incomplete (cannot found a '{' inside message body)");
+				publish("/error", "Class received, but incomplete (cannot found a '{' inside message body)");
 			}
 			
 	

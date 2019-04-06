@@ -24,7 +24,6 @@ public class Argos extends ClassLoader {
 	
 	//PropSingleton prop; 
 	private String 		   clientId;
-	private int            publishInterval;
 	private CommBase       commInterface;
 	private ArgosCV        argosCV;
 	private ArgosSensor    argosSensor;
@@ -43,13 +42,6 @@ public class Argos extends ClassLoader {
 			logStart();
 			
 			clientId = PROP.getProp("client.id");
-			try {
-				publishInterval =  Integer.parseInt(PROP.getProp("mqtt.publish.interval.ms"));
-				
-			} catch (NumberFormatException e) {
-				publishInterval =  15000;
-				System.out.println("Error! Default publishInterval= " +publishInterval);
-			}
 			PROP.setRunning(true);
 			
 			// Path currentRelativePath = Paths.get("");
@@ -70,7 +62,7 @@ public class Argos extends ClassLoader {
 					MyLoadClass(PROP.getProp("opencv.original.class")); 
 			 }
 			 
-			 argosCV = new ArgosCV();
+			 argosCV = new ArgosCV();  // OpenCV processing thread
 		}
 		
 	private void logStart() {
@@ -106,16 +98,18 @@ public class Argos extends ClassLoader {
 	
 	private boolean compile(String className) {
 		boolean isWindows = System.getProperty("os.name")
-				  				   .toLowerCase().startsWith("windows");
+				  				  .toLowerCase().startsWith("windows");
 		// javac -cp . PropSingleton.java
-		String javac = "javac -cp . " +className;
-		String javacParams[] = javac.split(" ");
+		String javac = null; 
 		
-		if (isWindows) {	    
-			// blabla
+		if (isWindows) {
+			javac = PROP.getProp("javac.windows");
 		} else {
-		    // blabla
+			javac = PROP.getProp("javac.linux");
 		}
+		
+		javac += className; 
+		String javacParams[] = javac.split(" ");
 		
 		ProcessBuilder builder = new ProcessBuilder();//.inheritIO();
 		builder.command(javacParams);
@@ -139,7 +133,7 @@ public class Argos extends ClassLoader {
 	        result = sj.toString();
 	        
 	        if(exitCode != 0) {
-				commInterface.publish(clientId +"/Error", "Compile failed due to : [" +result +"]");
+				commInterface.publish("/error", "Compile failed due to : [" +result +"]");
 				
 			} else {
 				PROP.setNewClassReceived(true);
@@ -195,15 +189,12 @@ public class Argos extends ClassLoader {
 	        //System.out.println("Invoked method name: " + dynamicMethod.getName());
 			dynamicMethod.invoke(dynamicObject);
 			
-			// All gone well: save the new class name
-			PROP.setProp("opencv.class", className);
-			
-			commInterface.publish(clientId +"/Status", "Loaded successfully OpenCV class [" +className +"]");
+			commInterface.publish("/status", "Loaded successfully OpenCV class [" +className +"]");
 			return true;
 			
         } catch (LinkageError | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | IOException | NoSuchMethodException | SecurityException e) {
 			e.printStackTrace();
-			commInterface.publish(clientId +"/Error", e.getClass().getName()  +" [" +e.getMessage() +"]");
+			commInterface.publish("/error", e.getClass().getName()  +" [" +e.getMessage() +"]");
 			return false;
         } 
     }
@@ -222,19 +213,28 @@ public class Argos extends ClassLoader {
 					// 2- Try to load it
 					else if(MyLoadClass(PROP.getClassName()) == false) {
 						// Error! recover old 
-						MyLoadClass(PROP.getProp("opencv.original.class")); 
+						MyLoadClass(PROP.getProp("opencv.class.original")); 
 					}
 					PROP.setNewClassReceived(false);
+				}
+				
+				if(PROP.getPictureName() != null) {
+					String temp = new String(PROP.imageInByte);
+					
+					commInterface.publish("/status/" +PROP.getPictureName(), 
+										  temp);
+					
+					PROP.setPictureName(null);
 				}
 				
 				if(dynamicMethod != null) {
 					// Getting the target method from the loaded class and invoke it using its name
 			        System.out.println("Invoked method name: " + dynamicMethod.getName());
 			        dynamicMethod.invoke(dynamicObject);
-			        commInterface.publish(clientId +"/Status", "Invoked method name: " + dynamicMethod.getName());
+			        commInterface.publish("/status", "Invoked method name: " + dynamicMethod.getName());
 				}
 				
-				Thread.sleep(publishInterval) ;
+				Thread.sleep(commInterface.getPublishInterval()) ;
 				
 				
 			} catch (InterruptedException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
@@ -242,7 +242,7 @@ public class Argos extends ClassLoader {
 
 				dynamicMethod = null;			
 				System.out.println(e.getClass().getName());
-				commInterface.publish(clientId +"/Error", e.getClass().getName());
+				commInterface.publish("/error", e.getClass().getName());
 			}
 		} 
 		
@@ -263,10 +263,7 @@ public class Argos extends ClassLoader {
 			 Argos argos = new Argos();			 
 			 shouldRestart = argos.run();
 			 argos = null;
-			 //MQTTtest test = new MQTTtest(); 
 			 
-			 //test.crun();
-			 //System.gc();
 		 } while(shouldRestart);
 		 
 		 System.exit(0);
@@ -276,7 +273,7 @@ public class Argos extends ClassLoader {
 /*  Example of OpenCV dummy class for MQtt:
  * 
  *  
-    topic: Win32/class
+    topic: Win32/command/class
 
     public class MyClass4 {
 	
