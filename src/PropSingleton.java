@@ -1,3 +1,5 @@
+import java.awt.Toolkit;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -16,7 +18,7 @@ public enum PropSingleton {
     
     INSTANCE("Initial class info"); 
 	static final String FILENAME = "argos.properties";
-  
+	
     private Properties props;
     private String className;
     private String pictureName =        null;
@@ -25,6 +27,8 @@ public enum PropSingleton {
     private boolean newClassReceived =	false;
     private boolean mustRestart =		false;
 	private boolean doSnap =			false;
+	private Toolkit kit =       Toolkit.getDefaultToolkit();
+
   
     private PropSingleton(String info) {
         // Get the properties file, or create it if not exist
@@ -58,7 +62,13 @@ public enum PropSingleton {
     public PropSingleton getInstance() {
         return INSTANCE;
     }
-     
+    
+    // Get SCROLL_LOCK, NUM_LOCK, etc status (to turn on or off, some features, in real-time)
+    public boolean getLockingKeyState(int keyCode) {
+    	//System.out.println("keyCode[" +keyCode +"]= " +(true==kit.getLockingKeyState(keyCode) ? "true" : "false"));
+    	return kit.getLockingKeyState(keyCode);
+    }
+    
     // getters and setters
 	public String getProp(String key) {
 		return props.getProperty(key);

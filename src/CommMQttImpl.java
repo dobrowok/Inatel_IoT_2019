@@ -45,13 +45,17 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 		return publishInterval;
 	}
 
-	public CommMQttImpl() {
+	public CommMQttImpl(String myClientId) {
 		tmpDir = System.getProperty("java.io.tmpdir"); // Temp dir
 		LOGGER.finest("java.io.tmpdir= " +tmpDir);
 		
 		
 		mqttType    = PROP.getProp("mqtt.type");
-		clientId    = PROP.getProp("mqtt.client.id");
+		if(myClientId.isEmpty())
+			clientId    = PROP.getProp("mqtt.client.id");
+		else 
+			clientId    = myClientId;
+			
 		subscribeTo = PROP.getProp("mqtt.subscribe.to");
 		try {
 			publishInterval =  Integer.parseInt(PROP.getProp("mqtt.publish.interval.ms"));

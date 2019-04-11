@@ -1,3 +1,5 @@
+import java.awt.Toolkit;
+import java.awt.event.KeyEvent;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -49,7 +51,7 @@ public class Argos extends ClassLoader {
 			// System.out.println("Current relative path is: " + s);
 			
 			 if(PROP.getProp("mqtt.type").equals("aws") || PROP.getProp("mqtt.type").equals("mosquitto") )
-				 commInterface = new CommMQttImpl();
+				 commInterface = new CommMQttImpl("bla");
 			 
 			 else {
 				 System.out.println("Error! No Comm type allowed!");
@@ -257,7 +259,15 @@ public class Argos extends ClassLoader {
 	 public static void main(String[] args) {
 		 boolean shouldRestart = false;
 		 
-		 // Enable a complete restart of this program, by a remote MQtt command
+		 // Start GUI if CAPS_LOCK is on
+		 if(PROP.getLockingKeyState(KeyEvent.VK_CAPS_LOCK)) {
+			 	System.out.println("CAPS=" +PROP.getLockingKeyState(KeyEvent.VK_CAPS_LOCK));
+			 
+			 	new ArgosGUI().run();			 
+			 	System.exit(0);
+		 }
+		
+		 // Else, start normal Server
 		 do 
 		 {
 			 Argos argos = new Argos();			 
