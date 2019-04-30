@@ -1,4 +1,3 @@
-import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -25,10 +24,8 @@ import java.net.URLConnection;
 public class Argos extends ClassLoader {
 	
 	//PropSingleton prop; 
-	private String 		   clientId;
 	private CommBase       commInterface;
 	private ArgosCV        argosCV;
-	private ArgosSensor    argosSensor;
 	private Method 		   dynamicMethod = null;
 	private Object 		   dynamicObject = null; 
 	
@@ -42,8 +39,7 @@ public class Argos extends ClassLoader {
 	// Start up
 	public Argos() {
 			logStart();
-			
-			clientId = PROP.getProp("client.id");
+
 			PROP.setRunning(true);
 			
 			// Path currentRelativePath = Paths.get("");
@@ -261,20 +257,19 @@ public class Argos extends ClassLoader {
 		 
 		 // Start GUI if CAPS_LOCK is on
 		 if(PROP.getLockingKeyState(KeyEvent.VK_CAPS_LOCK)) {
-			 	System.out.println("CAPS=" +PROP.getLockingKeyState(KeyEvent.VK_CAPS_LOCK));
+			 System.out.println("CAPS=" +PROP.getLockingKeyState(KeyEvent.VK_CAPS_LOCK));
 			 
-			 	new ArgosGUI().run();			 
-			 	System.exit(0);
+			 new ArgosGUI().run();
 		 }
-		
-		 // Else, start normal Server
-		 do 
-		 {
-			 Argos argos = new Argos();			 
-			 shouldRestart = argos.run();
-			 argos = null;
-			 
-		 } while(shouldRestart);
+		 else { // Else, start normal Server
+			 do 
+			 {
+				 Argos argos = new Argos();			 
+				 shouldRestart = argos.run();
+				 argos = null;
+				 
+			 } while(shouldRestart);
+		 }
 		 
 		 System.exit(0);
 	 }

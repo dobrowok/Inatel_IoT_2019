@@ -1,7 +1,5 @@
 import java.awt.FlowLayout;
 import java.awt.image.BufferedImage;
-import java.util.logging.Logger;
-
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -11,10 +9,11 @@ import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
 
 public class ArgosGUI {
-	private static final Logger LOGGER = Logger.getLogger(Argos.class.getName());
 	private static final PropSingleton PROP = PropSingleton.INSTANCE;
 
-	CommMQttImpl commInterface;
+	private CommMQttImpl	commInterface;
+	private JFrame			jframe;
+	private JLabel			vidpanel;
 	
 	ArgosGUI() {
 		String clientId = PROP.getInstance().getProp("client.id")+"_GUI";
@@ -34,17 +33,18 @@ public class ArgosGUI {
     		e.printStackTrace();
     		System.out.println("Deu ruim!");
     	}
-	}
-
-	public void run() {
-		// Create a graphical JFrame for exibiting the video output
-		JFrame jframe = new JFrame("Title");
+    	
+		// Create a graphical JFrame for showing the video output
+		jframe = new JFrame("Title");
 		jframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		jframe.setLayout(new FlowLayout());        
 		jframe.setSize( 640, 480); 
-		JLabel vidpanel = new JLabel();
+		vidpanel = new JLabel();
 		jframe.setContentPane(vidpanel);
 		jframe.setVisible(true);
+	}
+	
+	public void run() {
 
 		int k=0;
 		while (PROP.shouldKeepRunning() && commInterface.isConnected() ) {
@@ -64,6 +64,6 @@ public class ArgosGUI {
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-		}		
+		}
 	}
 }
