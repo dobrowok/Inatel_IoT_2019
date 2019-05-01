@@ -21,4 +21,4 @@ Progress:
 - 2019-Apr-08 Java: openCV development +bug fixes
 - 2019-Apr-09 Java: GUI start
 - 2019-Apr-10 Java:
- 
+- 2019-Apr-30 Doc: chapters 'Detalhes de Implementação' and 'Cenário de Operação' 
