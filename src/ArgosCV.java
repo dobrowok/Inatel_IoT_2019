@@ -48,17 +48,11 @@ public class ArgosCV {
 	public VideoCapture			camera;
 	public CascadeClassifier	cascade; 
 	
+	static { System.loadLibrary(Core.NATIVE_LIBRARY_NAME); }
+	
 	ArgosCV () {
 		opencvVideo = PROP.getProp("opencv.video");
 
-    	try {
-            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-            
-    	} catch(SecurityException e){
-    		e.printStackTrace();
-    		System.out.println("Deu ruim!");
-    	}
-    	
 		// Open from a webcam (0) or a video file
 		if(opencvVideo.equals("0"))
 			camera = new VideoCapture(0);

@@ -5,7 +5,7 @@ public abstract class CommBase {
 		// TODO Auto-generated method stub
 	//	}
 	public CommBase () {
-		System.out.println("CommBase");
+		// System.out.println("CommBase");
 	}    
 	public abstract void    publish(String topic, String message);
     public abstract void    process();

@@ -11,6 +11,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -20,6 +21,16 @@ import java.net.URLConnection;
 // http://tutorials.jenkov.com/java/fields.html
 // https://stackify.com/java-logging-best-practices/
 // https://dzone.com/articles/programmatically-restart-java
+// https://www.alatortsev.com/2018/11/21/installing-opencv-4-0-on-raspberry-pi-3-b/
+// https://www.pyimagesearch.com/2018/09/26/install-opencv-4-on-your-raspberry-pi/
+
+// https://answers.opencv.org/question/193924/failed-to-use-systemloadlibrarycorenative_library_name-on-raspberry-pi/
+
+/*
+ * Rodando no braço:
+	java -Djava.library.path=.:/home/pi/opencv/build/lib -Dfile.encoding=Cp1252  -jar argos.jar
+
+ */
 
 public class Argos extends ClassLoader {
 	
@@ -48,6 +59,9 @@ public class Argos extends ClassLoader {
 			
 			 if(PROP.getProp("mqtt.type").equals("aws") || PROP.getProp("mqtt.type").equals("mosquitto") )
 				 commInterface = new CommMQttImpl("bla");
+			 
+			 else if(PROP.getProp("mqtt.type").toLowerCase().equals("dummy"))
+			     commInterface = new CommDummy("bla");
 			 
 			 else {
 				 System.out.println("Error! No Comm type allowed!");
@@ -192,7 +206,8 @@ public class Argos extends ClassLoader {
 			
         } catch (LinkageError | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | IOException | NoSuchMethodException | SecurityException e) {
 			e.printStackTrace();
-			commInterface.publish("/error", e.getClass().getName()  +" [" +e.getMessage() +"]");
+			commInterface.publish("error in MyLoadClass(" +className +")", e.getClass().getName()  +" [" +e.getMessage() +"]");
+			/* To do: criar uma classe default para o OpenCV */
 			return false;
         } 
     }

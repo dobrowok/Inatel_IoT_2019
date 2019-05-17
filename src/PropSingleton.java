@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Properties;
 import java.util.TreeSet;
+import java.util.logging.Logger;
 
 // https://www.devmedia.com.br/utilizando-arquivos-de-propriedades-no-java/25546
 // https://dzone.com/articles/java-singletons-using-enum
@@ -15,6 +16,7 @@ public enum PropSingleton {
     
     INSTANCE("Initial class info"); 
 	static final String FILENAME = "argos.properties";
+	private static final Logger LOGGER = Logger.getLogger(PropSingleton.class.getName());
 	
     private Properties props;
     private String className;
@@ -42,7 +44,7 @@ public enum PropSingleton {
     			
     			file = new FileInputStream("argos.properties");
     			props.load(file);
-    			System.out.println(props.getProperty("prop.server.login"));
+    			System.out.println("prop.server.login= " +props.getProperty("prop.server.login"));
     			mustRestart = false;
     			
         	    break;
@@ -68,7 +70,14 @@ public enum PropSingleton {
     
     // getters and setters
 	public String getProp(String key) {
-		return props.getProperty(key);
+		if(null == props.getProperty(key)) {
+			System.out.println("[" +key +"] Is empty!!!");
+			LOGGER.severe("[" +key +"] Is empty!!!");
+			return "";  // Return an empty string, to not cause damage
+			
+		} else {
+			return props.getProperty(key);
+		}
     }
 
 	public void setProp(String key, String value) {
