@@ -25,3 +25,4 @@ Progress:
 - 2019-May-13 Hardware: installing Raspberry PI
 - 2019-May-15 Hardware: installing and compiling OpenCV libraries 
 - 2019-May-17 Hardware: Raspberry able to run Argos program!!
+- 2019-May-17 Java: working on GUI and bug fixes
