@@ -11,9 +11,9 @@ import org.opencv.imgcodecs.Imgcodecs;
 public class ArgosGUI {
 	private static final PropSingleton PROP = PropSingleton.INSTANCE;
 
-	private CommMQttImpl	commInterface;
-	private JFrame			jframe;
-	private JLabel			vidpanel;
+	private CommBase commInterface;
+	private JFrame	 jframe;
+	private JLabel	 vidpanel;
 	
 	ArgosGUI() {
 		String clientId = PROP.getInstance().getProp("client.id")+"_GUI";
@@ -21,7 +21,10 @@ public class ArgosGUI {
 		if(PROP.getProp("mqtt.type").equals("aws") || PROP.getProp("mqtt.type").equals("mosquitto") )
 			commInterface = new CommMQttImpl(clientId);
 		 
-		 else {
+		else if(PROP.getProp("mqtt.type").toLowerCase().equals("dummy"))
+		     commInterface = new CommDummy("bla");		 
+
+		else {
 			 System.out.println("Error! No Comm type allowed!");
 			 System.exit(-1);
 		 }
@@ -45,20 +48,26 @@ public class ArgosGUI {
 	}
 	
 	public void run() {
-
+		Mat           src = null;
+		BufferedImage img = null;
 		int k=0;
 		while (PROP.shouldKeepRunning() && commInterface.isConnected() ) {
 			k++;
 	    	jframe.setTitle("Frame=" +k);
 	    	
 			try {
-				Mat src = Imgcodecs.imread("h:\\Untitled.png");
-
-				BufferedImage  img = ArgosCV.Mat2BufferedImage(src);
+				if(PROP.mustSnap()) {
+					img.set = PROP.imageInByte;
+				} else {// Only use a picture 
+					src = Imgcodecs.imread("h:\\Untitled.png");
+					img = ArgosCV.Mat2BufferedImage(src);
+				}
+				
 		        ImageIcon image = new ImageIcon(img);
 		        vidpanel.setIcon(image);
 		        vidpanel.repaint();
 		        
+	        
 				Thread.sleep(commInterface.getPublishInterval()/10) ;
 				
 			} catch (InterruptedException e) {

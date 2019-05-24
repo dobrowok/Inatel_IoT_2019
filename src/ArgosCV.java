@@ -16,6 +16,9 @@ import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.File;
+import java.time.Instant;
+import java.util.logging.Logger;
+
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
@@ -34,24 +37,36 @@ import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.Videoio;
 
 public class ArgosCV {
+	private final static Logger LOGGER = Logger.getLogger("CommDummy");
 	private static final PropSingleton PROP = PropSingleton.INSTANCE;
 
-	public String	message = "";
-	private String	opencvVideo;
-	public JLabel	vidpanel;
-	public JFrame	jframe;
 	
-	public Mat					frame;
-	public Mat					gray;
-	public MatOfRect			detections;
-	public Rect[] 				detectedArray; 
-	public VideoCapture			camera;
-	public CascadeClassifier	cascade; 
+	private String	message = "";
+	private String	opencvVideo;
+	private JLabel	vidpanel;
+	private JFrame	jframe;
+	
+	private Mat					frame;
+	private Mat					gray;
+	private MatOfRect			detections;
+	private Rect[] 				detectedArray; 
+	private VideoCapture		camera;
+	private CascadeClassifier	cascade; 
+	private boolean             isGUI = false;
+	private long 				opencvDetectionInterval = 10;
 	
 	static { System.loadLibrary(Core.NATIVE_LIBRARY_NAME); }
 	
 	ArgosCV () {
 		opencvVideo = PROP.getProp("opencv.video");
+		
+		try {
+			opencvDetectionInterval = Long.parseLong(PROP.getProp("opencv.detect.interval"));
+			
+		} catch (NumberFormatException e) {
+			opencvDetectionInterval =  10;
+			System.out.println("Error! Default opencvDetectionInterval= " +opencvDetectionInterval);
+		}
 
 		// Open from a webcam (0) or a video file
 		if(opencvVideo.equals("0"))
@@ -59,15 +74,27 @@ public class ArgosCV {
 		else
 			camera = new VideoCapture(opencvVideo);
 		
-		// Create a graphical JFrame for showing the video output
-		jframe = new JFrame("Title");
-		jframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		jframe.setLayout(new FlowLayout());        
-		jframe.setSize( (int)camera.get(3), (int)camera.get(4) ); //img2.getWidth(null)+50, img2.getHeight(null)+50);
-		System.out.println("Size = [" +camera.get(3) +"," +camera.get(4) +"]");
-		vidpanel = new JLabel();
-		jframe.setContentPane(vidpanel);
-		jframe.setVisible(true);
+		// Only create GUI if is Windows or Linux+DISPLAY
+		if ( System.getProperty("os.name").toLowerCase().startsWith("windows"))
+			isGUI = true;
+		else if (System.getProperty("DISPLAY").isEmpty())
+			isGUI = false;
+		else
+			isGUI = true; // Have a XWindows server available
+
+		if(isGUI) {
+			// Create a graphical JFrame for showing the video output
+			jframe = new JFrame("Title");
+			jframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			jframe.setLayout(new FlowLayout());        
+			jframe.setSize( (int)camera.get(3), (int)camera.get(4) ); //img2.getWidth(null)+50, img2.getHeight(null)+50);
+			System.out.println("Size = [" +camera.get(3) +"," +camera.get(4) +"]");
+			vidpanel = new JLabel();
+			jframe.setContentPane(vidpanel);
+			jframe.setVisible(true);
+		} else {
+			LOGGER.warning("No GUI detected! Will work only as server !");
+		}
 		
         // Load the classifiers
 		//cascade =  new  CascadeClassifier("haarcascade_frontalcatface.xml"); 
@@ -83,7 +110,7 @@ public class ArgosCV {
     }
 	
 	// OpenCV operations
-	void process() {
+	boolean process() {
     	// 1) Convert image to gray
 
     	//Imgproc.cvtColor(frame, gray, Imgproc.COLOR_RGB2BGR, 0); // Changes blue-green-red
@@ -122,44 +149,63 @@ public class ArgosCV {
 		    // Plot a yellow circle 
 		    Imgproc.circle(frame, center1, radius, new Scalar(0, 255, 255), 4, 8, 0);
 		}
+		
+		return(detectedArray.length>0);
 	}
 	
 	void run() {
-		int k=0;
+		boolean targetDetected = false;
+		int     k = 0;
+		long    startTime = Instant.now().toEpochMilli();
+		
 		while (PROP.shouldKeepRunning()) {
 		    if (camera.read(frame)) {
-		    	process();
-			            
+		    	targetDetected = process();
+    	
 				// Show 'gray' image, or the color processed, based on SCROLL_LOCK key status
-				BufferedImage img;
+		    	BufferedImage img;
 				if(PROP.getLockingKeyState(KeyEvent.VK_SCROLL_LOCK)) {
 					img = Mat2BufferedImage(gray);
 					
 				} else {
 					img = Mat2BufferedImage(frame);
 				}
+
+				// Only uses Windows is have one available
+		    	if(isGUI) {
+					ImageIcon image = new ImageIcon(img);
+					vidpanel.setIcon(image);
+					vidpanel.repaint();
+					k++;
+					jframe.setTitle("Frame=" +k +message);
+		    	}
+		    	
+		    	// If any target detected....
+		    	if(targetDetected) {
+		    		// ... and is time to another shot... (remember: milisseconds!)
+		    		if((startTime+1000*opencvDetectionInterval) < Instant.now().toEpochMilli()) {
+		    			System.out.println("Times gone");
+		    			
+		    			// Set to take a picture and reset clock
+		    			PROP.setSnap(true);
+		    			startTime = Instant.now().toEpochMilli();
+		    		}		    		
+		    	}
 				
-				ImageIcon image = new ImageIcon(img);
-				vidpanel.setIcon(image);
-				vidpanel.repaint();
-				k++;
-				jframe.setTitle("Frame=" +k +message);
-				
-				// Received a command to create a snapshot
+				// Received a command to create a snapshot, or detected the target
 				if(PROP.mustSnap()) {
 					saveImage(img);
 					PROP.setSnap(false);
 				}
 				
 				try {
-					Thread.sleep(100);
+					Thread.sleep(1000); // kkk
 					//System.out.println("Thread.sleep(100)");
 					
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				
 				        
 			} else {
 			    // Rewind video
@@ -170,28 +216,6 @@ public class ArgosCV {
 		}
 	}
     
-    // Save an image
-    public void saveImage(BufferedImage img) {        
-        try {
-        	String filename = PROP.getProp("opencv.snapshot.filename");
-
-        	int seq = Integer.valueOf(filename.replaceAll("[^\\d]", "" )); // remove all strings, but remains numbers
-        	filename= filename.replaceAll("\\d",""); 					   // Remove all numbers
-        	seq++;
-        	filename += seq;
-        	
-            File outputfile = new File(filename + ".jpg");
-            ImageIO.write(img, "jpg", outputfile);
-            //Imgcodecs.imwrite("enhancedParrot.jpg", gray); // Outro jeito fácil
-            
-            PROP.setProp("opencv.snapshot", filename);            
-            
-        } catch (Exception e) {
-        	e.printStackTrace();
-            System.out.println("error");
-        }
-    }
-        
     public static BufferedImage Mat2BufferedImage(Mat m){
         //source: http://answers.opencv.org/question/10344/opencv-java-load-image-to-gui/
         //Fastest code
@@ -209,6 +233,32 @@ public class ArgosCV {
          final byte[] targetPixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
          System.arraycopy(b, 0, targetPixels, 0, b.length);  
          return image;
-    }       
+    }
+    
+    // Save an image to disk
+    public void saveImage(BufferedImage img) {        
+        try {
+        	String filename = PROP.getProp("opencv.snapshot.filename");
+
+        	int seq = Integer.valueOf(filename.replaceAll("[^\\d]", "" )); // remove all strings, but remains numbers
+        	filename= filename.replaceAll("\\d",""); 					   // Remove all numbers
+        	seq++;
+        	filename += seq;
+        	
+            File outputfile = new File(filename + ".jpg");
+            ImageIO.write(img, "jpg", outputfile);
+            //Imgcodecs.imwrite("enhancedParrot.jpg", gray); // Outro jeito fácil
+            
+            // Set the last file name taken, and indicates to PROP that a snapshot must be sent (latter, by Argos Main)
+            PROP.setProp("opencv.snapshot", filename);
+            PROP.setPictureName(filename);
+            final byte[] targetPixels = ((DataBufferByte) img.getRaster().getDataBuffer()).getData();
+            PROP.imageInByte = targetPixels;
+            
+        } catch (Exception e) {
+        	e.printStackTrace();
+            System.out.println("error");
+        }
+    }
 } 
 

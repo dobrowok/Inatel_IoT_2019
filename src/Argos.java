@@ -216,9 +216,9 @@ public class Argos extends ClassLoader {
 
 		while (PROP.shouldKeepRunning() && commInterface.isConnected() ) {
 			try {
-				// Received a new class for openCV
+				// Received a new class for openCV and...
 				if(PROP.isNewClassArrived()) {
-					// 1- Try to compile file
+					// 1- Try to compile the file
 					if(compile(PROP.getClassName() +".java") == false) {
 						LOGGER.severe("Could not compile [" +PROP.getClassName() +"]");
 					}
@@ -231,15 +231,18 @@ public class Argos extends ClassLoader {
 					PROP.setNewClassReceived(false);
 				}
 				
+				// A new snapshot was created and must be delivered
 				if(PROP.getPictureName() != null) {
 					String temp = new String(PROP.imageInByte);
 					
-					commInterface.publish("/status/" +PROP.getPictureName(), 
+					commInterface.publish("/snapshot/" +PROP.getPictureName(), 
 										  temp);
 					
 					PROP.setPictureName(null);
+					PROP.imageInByte = null;
 				}
 				
+				// To do: remove it
 				if(dynamicMethod != null) {
 					// Getting the target method from the loaded class and invoke it using its name
 			        System.out.println("Invoked method name: " + dynamicMethod.getName());

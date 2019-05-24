@@ -4,6 +4,12 @@
  * https://www.hackster.io/mariocannistra/python-and-paho-for-mqtt-with-aws-iot-921e41
  * 
  * https://www.programcreek.com/java-api-examples/?api=org.eclipse.paho.client.mqttv3.MqttMessage
+ * 
+ * The payload for every publish request is limited to 128 KB. The AWS IoT service rejects publish and connect requests larger than this size.
+ * https://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html#limits_iot
+ * 
+ * https://mosquitto.org/man/mosquitto-conf-5.html
+ * Max payload
  */
 
 
@@ -187,9 +193,13 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 	
 	@Override
 	public void messageArrived(String topic, MqttMessage message) throws Exception {
-		LOGGER.warning("messageArrived["+topic +"] =>" +message.toString());
+		// Only 
+		if(!topic.toLowerCase().contains("snapshot"))
+			LOGGER.warning("messageArrived["+topic +"] =>" +message.toString());
+		else
+			LOGGER.warning("messageArrived["+topic +"] => [byte array]"); 
 		
-		// These messages comes from Java to MQtt server, so should not be processed
+		// These messages types comes from other Argos instances running, so should not be processed
 		if(topic.toLowerCase().contains("status") || topic.toLowerCase().contains("error") || topic.toLowerCase().contains("image") ) {
 			return;
 		
@@ -205,7 +215,7 @@ public class CommMQttImpl extends CommBase implements MqttCallback
 		} else if(topic.toLowerCase().contains("snapshot")) {
 			PROP.setSnap(true);
 
-		} else if(topic.toLowerCase().contains("get")) {
+		} else if(topic.toLowerCase().contains("read")) {
 			publish("/status", PROP.getProp(message.toString()));
 		
 		// Change a configuration to properties file and restart
