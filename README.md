@@ -2,7 +2,10 @@
 Inatel Internet of Things 2019, Undergraduate Thesis
 
 Document: 
-   Busca de pessoas em Rasperby PI (Introdução, IOT018, Kleber Dobrowolski).docx
+    Busca de pessoas em Rasperby PI (Kleber Dobrowolski).docx
+   
+To run:
+    java -Djava.library.path=.:/home/pi/opencv/build/lib -Dfile.encoding=Cp1252  -jar argos.jar
    
 Progress:
 
@@ -25,4 +28,7 @@ Progress:
 - 2019-May-13 Hardware: installing Raspberry PI
 - 2019-May-15 Hardware: installing and compiling OpenCV libraries 
 - 2019-May-17 Hardware: Raspberry able to run Argos program!!
-- 2019-May-17 Java: working on GUI and bug fixes
+- 2019-May-24 Java: working on GUI and bug fixes
+- 2019-May-25 Java: bug fixes
+- 2019-May-26 Java: GUI receive snapshots now; Client can compile; and +bug fixes
+

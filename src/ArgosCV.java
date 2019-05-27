@@ -39,12 +39,13 @@ import org.opencv.videoio.Videoio;
 public class ArgosCV {
 	private final static Logger LOGGER = Logger.getLogger("CommDummy");
 	private static final PropSingleton PROP = PropSingleton.INSTANCE;
-
 	
 	private String	message = "";
 	private String	opencvVideo;
 	private JLabel	vidpanel;
 	private JFrame	jframe;
+	private String  filename;
+	private long    fileSeq= 0;
 	
 	private Mat					frame;
 	private Mat					gray;
@@ -52,20 +53,23 @@ public class ArgosCV {
 	private Rect[] 				detectedArray; 
 	private VideoCapture		camera;
 	private CascadeClassifier	cascade; 
-	private boolean             isGUI = false;
 	private long 				opencvDetectionInterval = 10;
 	
 	static { System.loadLibrary(Core.NATIVE_LIBRARY_NAME); }
 	
 	ArgosCV () {
 		opencvVideo = PROP.getProp("opencv.video");
+		filename = PROP.getProp("opencv.snapshot.filename");
 		
 		try {
 			opencvDetectionInterval = Long.parseLong(PROP.getProp("opencv.detect.interval"));
+			fileSeq =                 Long.parseLong(PROP.getProp("opencv.snapshot.seq"));
 			
 		} catch (NumberFormatException e) {
 			opencvDetectionInterval =  10;
+			fileSeq = 0;
 			System.out.println("Error! Default opencvDetectionInterval= " +opencvDetectionInterval);
+			System.out.println("Error! Default opencv.file.seq= " +fileSeq);
 		}
 
 		// Open from a webcam (0) or a video file
@@ -73,16 +77,8 @@ public class ArgosCV {
 			camera = new VideoCapture(0);
 		else
 			camera = new VideoCapture(opencvVideo);
-		
-		// Only create GUI if is Windows or Linux+DISPLAY
-		if ( System.getProperty("os.name").toLowerCase().startsWith("windows"))
-			isGUI = true;
-		else if (System.getProperty("DISPLAY").isEmpty())
-			isGUI = false;
-		else
-			isGUI = true; // Have a XWindows server available
 
-		if(isGUI) {
+		if(PROP.isGUIMode()) {
 			// Create a graphical JFrame for showing the video output
 			jframe = new JFrame("Title");
 			jframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -172,7 +168,7 @@ public class ArgosCV {
 				}
 
 				// Only uses Windows is have one available
-		    	if(isGUI) {
+		    	if(PROP.isGUIMode()) {
 					ImageIcon image = new ImageIcon(img);
 					vidpanel.setIcon(image);
 					vidpanel.repaint();
@@ -184,7 +180,7 @@ public class ArgosCV {
 		    	if(targetDetected) {
 		    		// ... and is time to another shot... (remember: milisseconds!)
 		    		if((startTime+1000*opencvDetectionInterval) < Instant.now().toEpochMilli()) {
-		    			System.out.println("Times gone");
+		    			//System.out.println("Times gone");
 		    			
 		    			// Set to take a picture and reset clock
 		    			PROP.setSnap(true);
@@ -192,10 +188,15 @@ public class ArgosCV {
 		    		}		    		
 		    	}
 				
-				// Received a command to create a snapshot, or detected the target
+				// Received a command to create a snapshot OR detected the target
 				if(PROP.mustSnap()) {
-					saveImage(img);
+					//System.out.println("Salvou Prop");
+					// Increment counter and save picture on global variable
+					fileSeq++;
+					PROP.setPictureName(filename +Long.toString(fileSeq) +".jpg");
+					PROP.bufferedImage = img;
 					PROP.setSnap(false);
+					PROP.setProp("opencv.snapshot.seq", fileSeq);
 				}
 				
 				try {
@@ -236,10 +237,9 @@ public class ArgosCV {
     }
     
     // Save an image to disk
-    public void saveImage(BufferedImage img) {        
+    public void saveImage(BufferedImage img) { 
+    	System.exit(-10);
         try {
-        	String filename = PROP.getProp("opencv.snapshot.filename");
-
         	int seq = Integer.valueOf(filename.replaceAll("[^\\d]", "" )); // remove all strings, but remains numbers
         	filename= filename.replaceAll("\\d",""); 					   // Remove all numbers
         	seq++;
@@ -252,8 +252,8 @@ public class ArgosCV {
             // Set the last file name taken, and indicates to PROP that a snapshot must be sent (latter, by Argos Main)
             PROP.setProp("opencv.snapshot", filename);
             PROP.setPictureName(filename);
-            final byte[] targetPixels = ((DataBufferByte) img.getRaster().getDataBuffer()).getData();
-            PROP.imageInByte = targetPixels;
+            //final byte[] targetPixels = ((DataBufferByte) img.getRaster().getDataBuffer()).getData();
+            //PROP.imageInByte = targetPixels;
             
         } catch (Exception e) {
         	e.printStackTrace();

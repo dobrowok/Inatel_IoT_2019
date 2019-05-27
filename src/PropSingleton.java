@@ -1,4 +1,5 @@
 import java.awt.Toolkit;
+import java.awt.image.BufferedImage;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -21,11 +22,12 @@ public enum PropSingleton {
     private Properties props;
     private String className;
     private String pictureName =        null;
-    public  byte[] imageInByte =        null;
+    public  BufferedImage bufferedImage =        null;
     private boolean running =			true;
     private boolean newClassReceived =	false;
     private boolean mustRestart =		false;
 	private boolean doSnap =			false;
+	private boolean guiMode =			false;
 	private Toolkit kit =       Toolkit.getDefaultToolkit();
 
   
@@ -64,8 +66,11 @@ public enum PropSingleton {
     
     // Get SCROLL_LOCK, NUM_LOCK, etc status (to turn on or off, some features, in real-time)
     public boolean getLockingKeyState(int keyCode) {
-    	//System.out.println("keyCode[" +keyCode +"]= " +(true==kit.getLockingKeyState(keyCode) ? "true" : "false"));
-    	return kit.getLockingKeyState(keyCode);
+    	// Only works for Windows!!!
+    	 if(System.getProperty("os.name").toLowerCase().startsWith("windows"))
+    		 return kit.getLockingKeyState(keyCode);
+    	 else
+    		 return false;    	
     }
     
     // getters and setters
@@ -147,4 +152,17 @@ public enum PropSingleton {
 	public void setPictureName(String s) {
 		this.pictureName = s;
 	}
+	
+	public boolean isGUIMode() {
+		return guiMode;
+	}
+	
+	public void setGUIMode(boolean b) {
+		this.guiMode = b;
+	}
+
+	public void setProp(String key, long i) {
+		// TODO Auto-generated method stub
+		setProp(key, Long.toString(i));
+	}	
 }

@@ -1,12 +1,35 @@
+import java.util.Arrays;
+import java.util.Map;
+
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
+
 /* 
  * https://dzone.com/articles/introduction-to-json-with-java
- *  
+ * Json Para c++: https://github.com/nlohmann/json#examples  
  * 	
  */
 
 
 
 public class ArgosSensor {
+	
+	ArgosSensor() {
+		String json = "{\"foo\":1, \"bar\":\"baz\"}";
+		ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
+		Object o = null;
+		try {
+			o = engine.eval(String.format("JSON.parse('%s')", json));
+		} catch (ScriptException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		@SuppressWarnings("unchecked")
+		Map<String, String> map = (Map<String, String>) o;
+		System.out.println(Arrays.toString(map.entrySet().toArray()));
+		// [foo=1, bar=baz]
+	}
 	
 	/*
 	public JSONObject  getJson() {

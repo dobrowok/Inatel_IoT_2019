@@ -1,9 +1,8 @@
 
 public abstract class CommBase {
 	
-	//public void process() throws IOException {
-		// TODO Auto-generated method stub
-	//	}
+	public  String topicRec; 
+	
 	public CommBase () {
 		// System.out.println("CommBase");
 	}    
