@@ -1,6 +1,7 @@
 import java.awt.event.KeyEvent;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -236,8 +237,8 @@ public class Argos extends ClassLoader {
 				// A new snapshot was created and must be delivered
 				if(PROP.getPictureName() != null) {
 		            // Savig snapshot to disk
-					//File outputfile = new File(PROP.getPictureName());
-		            //ImageIO.write(PROP.bufferedImage, "jpg", outputfile);
+					File outputfile = new File(PROP.getPictureName());
+		            ImageIO.write(PROP.bufferedImage, "jpg", outputfile);
 
 					// Extract the image bytes
 					ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -294,7 +295,7 @@ public class Argos extends ClassLoader {
 		 System.out.println("DISPLAY= " +System.getenv("DISPLAY"));
 		 
 		 // In Linux we may not have a GUI (depending on DISPLAY variable)
-		 if(isDisplay) 
+		 if(isDisplay || isWindows) 
 			 PROP.setGUIMode(true);
 		 else
 			 PROP.setGUIMode(false);
@@ -306,7 +307,6 @@ public class Argos extends ClassLoader {
 			 new ArgosGUI().run();
 			 
 		 } else { // Else, start normal Server			 
-		 
 			 do 
 			 {
 				 Argos argos = new Argos();			 

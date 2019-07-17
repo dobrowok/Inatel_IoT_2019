@@ -28,6 +28,7 @@ import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
@@ -108,20 +109,25 @@ public class CommMQtt extends CommBase implements MqttCallback
 	}
 	
 	private void connect() {
+		// We can have more than one address configured
+		String brokers[] = broker.split(";");
+		
 		try {
-			sampleClient = new MqttAsyncClient(broker, clientId, persistence);
+			sampleClient = new MqttAsyncClient(brokers[1], clientId, persistence);
 			sampleClient.setCallback(this);
 			
 	        MqttConnectOptions options = new MqttConnectOptions();
 	        options.setCleanSession(true);
-	        //options.setConnectionTimeout(10);
-	        options.setKeepAliveInterval(60);
+	        options.setConnectionTimeout(2);
+	        options.setKeepAliveInterval(10);
 	        //options.setAutomaticReconnect(true);
 	        
 	       // options.setSocketFactory(SslUtil.getSocketFactory("caFilePath", "clientCrtFilePath", "clientKeyFilePath", "password"));
+	        options.setServerURIs(brokers);
 	        
 	        LOGGER.warning("Connecting to broker [" +broker +"]");	        
 	        sampleClient.connect(options).waitForCompletion();
+	        System.out.println("Connected to: [" +sampleClient.getCurrentServerURI() +"]");
 
 	        // JSon with system info
 	        String now = new Timestamp(System.currentTimeMillis()).toString();
@@ -143,8 +149,8 @@ public class CommMQtt extends CommBase implements MqttCallback
 	        System.out.println("excep "  +me);
 	        me.printStackTrace();
 	        LOGGER.severe("Error connecting to [" +broker +"]");
-	        PROP.setRunning(false);
-	    }		
+	        System.exit(-1);
+	    }
 	}
 
 	@Override

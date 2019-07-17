@@ -2,9 +2,11 @@
 Inatel Internet of Things 2019, Undergraduate Thesis
 
 Document: 
+
     Busca de pessoas em Rasperby PI (Kleber Dobrowolski).docx
    
-To run:
+To run: (copy 'bin/argos.jar')
+
     java -Djava.library.path=.:/home/pi/opencv/build/lib -Dfile.encoding=Cp1252  -jar argos.jar
    
 Progress:
