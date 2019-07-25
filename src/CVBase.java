@@ -36,7 +36,7 @@ import org.opencv.objdetect.CascadeClassifier;
 import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.Videoio;
 
-public class ArgosCV {
+public class CVBase {
 	private final static Logger LOGGER = Logger.getLogger("CommDummy");
 	private static final PropSingleton PROP = PropSingleton.INSTANCE;
 	
@@ -57,7 +57,7 @@ public class ArgosCV {
 	
 	static { System.loadLibrary(Core.NATIVE_LIBRARY_NAME); }
 	
-	ArgosCV () {
+	CVBase () {
 		opencvVideo = PROP.getProp("opencv.video");
 		filename = PROP.getProp("opencv.snapshot.filename");
 		

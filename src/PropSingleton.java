@@ -92,7 +92,9 @@ public enum PropSingleton {
 			// props.store(new FileOutputStream(FILENAME), null);
 			
 			Properties tmp = new Properties() {
-			    @Override
+				private static final long serialVersionUID = 1L;
+
+				@Override
 			    public synchronized Enumeration<Object> keys() {
 			        return Collections.enumeration(new TreeSet<Object>(super.keySet()));
 			    }

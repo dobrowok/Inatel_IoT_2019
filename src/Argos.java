@@ -39,7 +39,7 @@ public class Argos extends ClassLoader {
 	
 	//PropSingleton prop; 
 	private CommBase       commInterface;
-	private ArgosCV        argosCV;
+	private CVBase         argosCV;
 	private Method 		   dynamicMethod = null;
 	private Object 		   dynamicObject = null; 
 	
@@ -53,6 +53,7 @@ public class Argos extends ClassLoader {
 	private Argos() {
 		logStart();
 
+		System.out.println("java.library.path= " +System.getProperty("java.library.path")); 
 		PROP.setRunning(true);
 		
 		// Path currentRelativePath = Paths.get("");
@@ -76,7 +77,7 @@ public class Argos extends ClassLoader {
 				MyLoadClass(PROP.getProp("opencv.class.original")); 
 		 }
 		 
-		 argosCV = new ArgosCV();  // OpenCV processing thread
+		 argosCV = new CVEyes(); //CVBase();  // OpenCV processing thread
 	}
 		
 	private void logStart() {
