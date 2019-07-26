@@ -21,7 +21,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Timestamp;
-import java.time.ZonedDateTime;
 import java.util.Base64;
 import java.util.logging.Logger;
 
@@ -293,6 +292,7 @@ public class CommMQtt extends CommBase implements MqttCallback
 				publish("/error", "{ \"error on writing parameter\": \"" +message.toString() +"\" }");
 			}
 
+		// CLASS: received a new class to be compiled
 		} else if(topic.toLowerCase().contains("class")) {
 			String filename = null;
 			
@@ -301,6 +301,7 @@ public class CommMQtt extends CommBase implements MqttCallback
 			if(Bracket>0) {
 				String parts[] = message.toString().substring(0, Bracket)
 										.split(" ");
+				// To do: better way to identify class name in the string!
 				filename = parts[parts.length-1]; // Get last name before the '{'
 				PROP.setClassName(filename);
 				filename += ".java";

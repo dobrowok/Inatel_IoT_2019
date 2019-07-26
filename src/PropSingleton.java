@@ -4,11 +4,15 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Properties;
 import java.util.TreeSet;
 import java.util.logging.Logger;
+
+import org.opencv.core.Mat;
 
 // https://www.devmedia.com.br/utilizando-arquivos-de-propriedades-no-java/25546
 // https://dzone.com/articles/java-singletons-using-enum
@@ -22,14 +26,34 @@ public enum PropSingleton {
     private Properties props;
     private String className;
     private String pictureName =        null;
-    public  BufferedImage bufferedImage =        null;
     private boolean running =			true;
     private boolean newClassReceived =	false;
     private boolean mustRestart =		false;
 	private boolean doSnap =			false;
 	private boolean guiMode =			false;
-	private Toolkit kit =       Toolkit.getDefaultToolkit();
+	private Toolkit kit =               Toolkit.getDefaultToolkit();
+    public  BufferedImage bufferedImage =        null;
+    public  Object        dynamicObject =        null;
+	public  Method        dynamicMethodProcess = null;
 
+	public boolean dynamicMethodProcess(Mat frame, Mat gray) {
+		boolean targetDetected = false;
+		
+		try {
+			targetDetected = (boolean)dynamicMethodProcess.invoke(dynamicObject, frame, gray);
+		} catch (IllegalAccessException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IllegalArgumentException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (InvocationTargetException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
+		return targetDetected;
+	}
   
     private PropSingleton(String info) {
         // Get the properties file, or create it if not exist

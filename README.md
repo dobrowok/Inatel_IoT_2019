@@ -34,3 +34,4 @@ Progress:
 - 2019-May-25 Java: bug fixes
 - 2019-May-26 Java: GUI receive snapshots now; Client can compile; and +bug fixes
 - 2019-Jul-24 Java: bug fix and MQtt address enhancement (more than 1 server addr)
+- 2019-jul-26 Java: reflection re-factored

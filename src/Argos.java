@@ -15,11 +15,14 @@ import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
+
+import org.opencv.core.Core;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLConnection;
+import org.opencv.core.Mat;
 
 // http://tutorials.jenkov.com/java/fields.html
 // https://stackify.com/java-logging-best-practices/
@@ -39,9 +42,8 @@ public class Argos extends ClassLoader {
 	
 	//PropSingleton prop; 
 	private CommBase       commInterface;
-	private CVBase         argosCV;
-	private Method 		   dynamicMethod = null;
-	private Object 		   dynamicObject = null; 
+	@SuppressWarnings("unused")
+	private CVBase         cvBase;
 	
 	private static final Logger LOGGER = Logger.getLogger(Argos.class.getName());
 	private static final PropSingleton PROP = PropSingleton.INSTANCE;
@@ -49,11 +51,13 @@ public class Argos extends ClassLoader {
 	String temp ;	
 	int  buffSize = 50;
 	
+	static { System.loadLibrary(Core.NATIVE_LIBRARY_NAME); }
+	
 	// Start up
 	private Argos() {
 		logStart();
 
-		System.out.println("java.library.path= " +System.getProperty("java.library.path")); 
+		//System.out.println("java.library.path= " +System.getProperty("java.library.path")); 
 		PROP.setRunning(true);
 		
 		// Path currentRelativePath = Paths.get("");
@@ -77,7 +81,7 @@ public class Argos extends ClassLoader {
 				MyLoadClass(PROP.getProp("opencv.class.original")); 
 		 }
 		 
-		 argosCV = new CVEyes(); //CVBase();  // OpenCV processing thread
+		 cvBase = new CVBase();  // OpenCV processing thread
 	}
 		
 	private void logStart() {
@@ -118,9 +122,9 @@ public class Argos extends ClassLoader {
 		String javac = null; 
 		
 		if (isWindows) {
-			javac = PROP.getProp("javac.windows");
+			javac = PROP.getProp("javac.windows") +" "; // Add a space
 		} else {
-			javac = PROP.getProp("javac.linux");
+			javac = PROP.getProp("javac.linux") +" ";
 		}
 		
 		javac += className; 
@@ -165,6 +169,7 @@ public class Argos extends ClassLoader {
 	}
 	
 	// Reflection: load a class in real-time
+	@SuppressWarnings("unchecked")
 	private boolean MyLoadClass(String className)  {
 		String url = null;
 		
@@ -190,19 +195,18 @@ public class Argos extends ClassLoader {
 
             // Hint: for loading 'MyClass.java' you should use 'MyClass' without any extension
             Class loadedMyClass =  defineClass(className, classData, 0, classData.length);
-
 			LOGGER.warning("Loaded class name: " + loadedMyClass.getName());
 	        
 	        // Create a new instance from the loaded class
-	        Constructor constructor = null;
-			constructor = loadedMyClass.getConstructor();
-			dynamicObject = constructor.newInstance();
+	        Constructor constructor = loadedMyClass.getConstructor();
+			PROP.dynamicObject = constructor.newInstance();			
 			
 	        // Getting the target method from the loaded class and invoke it using its name
-			dynamicMethod = loadedMyClass.getMethod("execute");
+			Class[] argTypes = { Mat.class, Mat.class }; // You need, the arguments
+			PROP.dynamicMethodProcess = loadedMyClass.getMethod("process", argTypes);
 			
 	        //System.out.println("Invoked method name: " + dynamicMethod.getName());
-			dynamicMethod.invoke(dynamicObject);
+			//PROP.dynamicMethod.invoke(dynamicObject);
 			
 			commInterface.publish("/status", "{ \"msg\":\"Loaded successfully OpenCV class [" +className +"] \"}");
 			return true;
@@ -237,7 +241,7 @@ public class Argos extends ClassLoader {
 				
 				// A new snapshot was created and must be delivered
 				if(PROP.getPictureName() != null) {
-		            // Savig snapshot to disk
+		            // Saving snapshot to disk
 					File outputfile = new File(PROP.getPictureName());
 		            ImageIO.write(PROP.bufferedImage, "jpg", outputfile);
 
@@ -258,21 +262,19 @@ public class Argos extends ClassLoader {
 					PROP.bufferedImage = null;
 				}
 				
-				// To do: remove it
-				if(dynamicMethod != null) {
-					// Getting the target method from the loaded class and invoke it using its name
-			        System.out.println("Invoked method name: " + dynamicMethod.getName());
-			        dynamicMethod.invoke(dynamicObject);
-			        //commInterface.publish("/status", "Invoked method name: " + dynamicMethod.getName());
-				}
-				
+				/*
+				 * // To do: remove it if(dynamicMethod != null) { // Getting the target method
+				 * from the loaded class and invoke it using its name
+				 * System.out.println("Invoked method name: " + dynamicMethod.getName());
+				 * dynamicMethod.invoke(dynamicObject); //commInterface.publish("/status",
+				 * "Invoked method name: " + dynamicMethod.getName()); }
+				 */
 				Thread.sleep(2000); //commInterface.getPublishInterval()) ;
 				
 				
-			} catch (InterruptedException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | IOException e) {
+			} catch (InterruptedException |  IllegalArgumentException |  IOException e) {
 				e.printStackTrace();
 
-				dynamicMethod = null;			
 				System.out.println(e.getClass().getName());
 				commInterface.publish("/error", e.getClass().getName());
 			}
