@@ -16,7 +16,6 @@ import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.File;
-import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import java.util.logging.Logger;
 

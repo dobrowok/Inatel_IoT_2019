@@ -10,9 +10,6 @@ import javax.script.ScriptException;
  * Json Para c++: https://github.com/nlohmann/json#examples  
  * 	
  */
-
-
-
 public class ArgosSensor {
 	
 	ArgosSensor() {

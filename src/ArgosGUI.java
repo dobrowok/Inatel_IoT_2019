@@ -12,6 +12,8 @@ import javax.swing.JLabel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
+import org.opencv.core.Mat;
+
 public class ArgosGUI {
 	private static final PropSingleton PROP = PropSingleton.INSTANCE;
 
@@ -20,15 +22,17 @@ public class ArgosGUI {
 	private JLabel	 vidpanel;
 	
 	String classExample = "/* Example of OpenCV dummy class for MQtt */ \n"
+						+"import org.opencv.core.Mat; \n\n"
 						+"public class MyClass4 { \n"
-						+"   public void execute() { \n"
+						+"   public boolean process(Mat frame, Mat gray) { \n"
 						+"       System.out.println(\"Hello world from the loaded class4 !!!\"); \n"
+						+"		 return true;  \n"
 						+"   } \n"
 						+"} \n";
 	
 
 	ArgosGUI() {
-		String clientId = PROP.getProp("mqtt.client.id")+"_GUI";
+		String clientId = PROP.getProp("mqtt.client.id") +"_GUI";
 		 
 		if(PROP.getProp("mqtt.type").equals("aws") || PROP.getProp("mqtt.type").equals("mosquitto") )
 			commInterface = new CommMQtt(clientId);
@@ -65,7 +69,7 @@ public class ArgosGUI {
 		
 		button.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-		    	System.out.println("Butao");
+		    	//System.out.println("Button pressed");
 		        commInterface.publish(jTopic.getText(), jClass.getText());
 		    }
 		} );

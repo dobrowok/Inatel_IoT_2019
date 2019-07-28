@@ -45,20 +45,19 @@ public class Argos extends ClassLoader {
 	@SuppressWarnings("unused")
 	private CVBase         cvBase;
 	
-	private static final Logger LOGGER = Logger.getLogger(Argos.class.getName());
-	private static final PropSingleton PROP = PropSingleton.INSTANCE;
-	
-	String temp ;	
-	int  buffSize = 50;
-	
+	private static final Logger        LOGGER = Logger.getLogger(Argos.class.getName());
+	private static final PropSingleton PROP =   PropSingleton.INSTANCE;
 	static { System.loadLibrary(Core.NATIVE_LIBRARY_NAME); }
 	
 	// Start up
 	private Argos() {
-		logStart();
-
 		//System.out.println("java.library.path= " +System.getProperty("java.library.path")); 
 		PROP.setRunning(true);
+		
+		// 1) Start the log subsystem
+		logStart();
+
+		// 2) Start the Communication subsystem (MQtt or dummy)
 		
 		// Path currentRelativePath = Paths.get("");
 		//String s = currentRelativePath.toAbsolutePath().toString();
@@ -75,12 +74,11 @@ public class Argos extends ClassLoader {
 			 System.exit(-1);
 		 }
 		
-		 // Load the OpenCV class 
+		 // 3) Load the OpenCV class and the OpenCV subsystem 
 		 if(MyLoadClass(PROP.getProp("opencv.class")) == false) {
-				// Error! recover old 
+				// Error! use original class instead
 				MyLoadClass(PROP.getProp("opencv.class.original")); 
 		 }
-		 
 		 cvBase = new CVBase();  // OpenCV processing thread
 	}
 		
@@ -118,18 +116,20 @@ public class Argos extends ClassLoader {
 	private boolean compile(String className) {
 		boolean isWindows = System.getProperty("os.name")
 				  				  .toLowerCase().startsWith("windows");
-		// javac -cp . PropSingleton.java
+
+		// javac -cp .;src;opencv-410.jar PropSingleton.java
 		String javac = null; 
 		
 		if (isWindows) {
-			javac = PROP.getProp("javac.windows") +" "; // Add a space
+			javac = PROP.getProp("javac.windows");
 		} else {
-			javac = PROP.getProp("javac.linux") +" ";
+			javac = PROP.getProp("javac.linux");
 		}
 		
+		javac += " "; // space before the class name
 		javac += className; 
-		String javacParams[] = javac.split(" ");
 		
+		String javacParams[] = javac.split(" ");		
 		ProcessBuilder builder = new ProcessBuilder();//.inheritIO();
 		builder.command(javacParams);
 
@@ -140,12 +140,12 @@ public class Argos extends ClassLoader {
 			LOGGER.warning("Going to execute : " +javac);
 			
 			final Process process = builder.start();			
-			int exitCode = process.waitFor();
+			int   exitCode = process.waitFor();
 			
 		    // get compile command output
-			InputStream is = process.getErrorStream();  
+			InputStream       is = process.getErrorStream();  
 		    InputStreamReader isr = new InputStreamReader(is);  
-		    BufferedReader br = new BufferedReader(isr);  
+		    BufferedReader    br = new BufferedReader(isr);  
 		    
 		    StringJoiner sj = new StringJoiner(System.getProperty("line.separator"));	        
 			br.lines().iterator().forEachRemaining(sj::add);
@@ -171,18 +171,17 @@ public class Argos extends ClassLoader {
 	// Reflection: load a class in real-time
 	@SuppressWarnings("unchecked")
 	private boolean MyLoadClass(String className)  {
-		String url = null;
 		
         try {
         	// Get class bytes from file
             //String url = "file:C:/Users/ekledob/workspace_neon/InatelTCC/MyClass.class";
         	//String url = "file:MyClass.class";
-        	url = "file:" +className +".class";
-            URL myUrl = new URL(url);
-            URLConnection connection = myUrl.openConnection();
-            InputStream input = connection.getInputStream();
+        	String                url = "file:" +className +".class";
+            URL                   myUrl = new URL(url);
+            URLConnection         connection = myUrl.openConnection();
+            InputStream           input = connection.getInputStream();
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            int data = input.read();
+            int                   data = input.read();
 
             while(data != -1){
                 buffer.write(data);
@@ -215,7 +214,7 @@ public class Argos extends ClassLoader {
 			e.printStackTrace();
 			commInterface.publish("/error", "{\"error\":\" in MyLoadClass(" +className +")\n" +e.getClass().getName()
 								+ " [" +e.getMessage() +"] \" }");
-			/* To do: criar uma classe default para o OpenCV */
+
 			return false;
         } 
     }
@@ -224,7 +223,7 @@ public class Argos extends ClassLoader {
 
 		while (PROP.shouldKeepRunning() && commInterface.isConnected() ) {
 			try {
-				// Received a new class for openCV and...
+				// Event: received a new class for openCV and...
 				if(PROP.isNewClassArrived()) {
 					// 1- Try to compile the file
 					if(compile(PROP.getClassName() +".java") == false) {
@@ -233,13 +232,13 @@ public class Argos extends ClassLoader {
 					
 					// 2- Try to load it
 					else if(MyLoadClass(PROP.getClassName()) == false) {
-						// Error! recover old 
+						// Error! recover old one
 						MyLoadClass(PROP.getProp("opencv.class.original")); 
 					}
 					PROP.setNewClassReceived(false);
 				}
 				
-				// A new snapshot was created and must be delivered
+				// Event: a new snapshot was created and must be delivered
 				if(PROP.getPictureName() != null) {
 		            // Saving snapshot to disk
 					File outputfile = new File(PROP.getPictureName());
@@ -262,14 +261,7 @@ public class Argos extends ClassLoader {
 					PROP.bufferedImage = null;
 				}
 				
-				/*
-				 * // To do: remove it if(dynamicMethod != null) { // Getting the target method
-				 * from the loaded class and invoke it using its name
-				 * System.out.println("Invoked method name: " + dynamicMethod.getName());
-				 * dynamicMethod.invoke(dynamicObject); //commInterface.publish("/status",
-				 * "Invoked method name: " + dynamicMethod.getName()); }
-				 */
-				Thread.sleep(2000); //commInterface.getPublishInterval()) ;
+				Thread.sleep(commInterface.getPublishInterval()) ;
 				
 				
 			} catch (InterruptedException |  IllegalArgumentException |  IOException e) {
@@ -292,21 +284,21 @@ public class Argos extends ClassLoader {
 		 boolean shouldRestart = false;
 		 
 		 boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
-		 boolean isDisplay = (System.getenv("DISPLAY") != null);
+		 boolean isDisplaySet = (System.getenv("DISPLAY") != null);
 
 		 System.out.println("SO= " +System.getProperty("os.name"));
 		 System.out.println("DISPLAY= " +System.getenv("DISPLAY"));
 		 
 		 // In Linux we may not have a GUI (depending on DISPLAY variable)
-		 if(isDisplay || isWindows) 
+		 if(isDisplaySet || isWindows) 
 			 PROP.setGUIMode(true);
 		 else
 			 PROP.setGUIMode(false);
 		 
 		 // Start GUI client if CAPS_LOCK is on
-		 if(isWindows && PROP.getLockingKeyState(KeyEvent.VK_SCROLL_LOCK)) {
+		 if(isWindows && PROP.getLockingKeyState(KeyEvent.VK_NUM_LOCK)) {
 			 PROP.setGUIMode(true);
-			 System.out.println("CAPS=" +PROP.getLockingKeyState(KeyEvent.VK_SCROLL_LOCK));
+			 System.out.println("CAPS=" +PROP.getLockingKeyState(KeyEvent.VK_NUM_LOCK));
 			 new ArgosGUI().run();
 			 
 		 } else { // Else, start normal Server			 

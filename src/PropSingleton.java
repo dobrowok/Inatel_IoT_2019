@@ -24,8 +24,8 @@ public enum PropSingleton {
 	private static final Logger LOGGER = Logger.getLogger(PropSingleton.class.getName());
 	
     private Properties props;
-    private String className;
-    private String pictureName =        null;
+    private String  className;
+    private String  pictureName =       null;
     private boolean running =			true;
     private boolean newClassReceived =	false;
     private boolean mustRestart =		false;
@@ -112,9 +112,7 @@ public enum PropSingleton {
 	public void setProp(String key, String value) {
 		props.setProperty(key, value);
 		
-        try {
-			// props.store(new FileOutputStream(FILENAME), null);
-			
+        try {			
 			Properties tmp = new Properties() {
 				private static final long serialVersionUID = 1L;
 
@@ -188,7 +186,6 @@ public enum PropSingleton {
 	}
 
 	public void setProp(String key, long i) {
-		// TODO Auto-generated method stub
 		setProp(key, Long.toString(i));
 	}	
 }

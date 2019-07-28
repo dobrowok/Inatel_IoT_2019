@@ -67,7 +67,6 @@ public class CommMQtt extends CommBase implements MqttCallback
 			clientId    = PROP.getProp("mqtt.client.id");
 		else 
 			clientId    = myClientId;
-			
 		
 		try {
 			publishInterval =  Integer.parseInt(PROP.getProp("mqtt.publish.interval.ms"));
@@ -111,7 +110,7 @@ public class CommMQtt extends CommBase implements MqttCallback
 		String brokers[] = broker.split(";");
 		
 		try {
-			sampleClient = new MqttAsyncClient(brokers[1], clientId, persistence);
+			sampleClient = new MqttAsyncClient(brokers[0], clientId, persistence);
 			sampleClient.setCallback(this);
 			
 	        MqttConnectOptions options = new MqttConnectOptions();
@@ -119,8 +118,8 @@ public class CommMQtt extends CommBase implements MqttCallback
 	        options.setConnectionTimeout(2);
 	        options.setKeepAliveInterval(10);
 	        //options.setAutomaticReconnect(true);
-	        
-	       // options.setSocketFactory(SslUtil.getSocketFactory("caFilePath", "clientCrtFilePath", "clientKeyFilePath", "password"));
+
+            
 	        options.setServerURIs(brokers);
 	        
 	        LOGGER.warning("Connecting to broker [" +broker +"]");	        
@@ -138,7 +137,7 @@ public class CommMQtt extends CommBase implements MqttCallback
 	        initialSubscribe();
 	        PROP.setProp("mqtt.startup.date", now );
 
-		} catch(MqttException me) {
+		} catch(MqttException  me) {
 	    	
 	        System.out.println("reason " +me.getReasonCode());
 	        System.out.println("msg "    +me.getMessage());
@@ -328,4 +327,5 @@ public class CommMQtt extends CommBase implements MqttCallback
 			
 		}
 	}
+	
 }
