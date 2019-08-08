@@ -38,10 +38,11 @@ public class CVBase {
 	private String  filename;
 	private long    fileSeq= 0;
 	
-	protected Mat				frame;
-	protected Mat				gray;
-	private   VideoCapture		camera;
-	private long 				opencvDetectionInterval = 10;
+	protected Mat			frame;
+	protected Mat			gray;
+	private   VideoCapture	camera;
+	private long 			opencvDetectionInterval= 10;
+	private long 			threadSleep= 100;
 	
 	//static { System.loadLibrary(Core.NATIVE_LIBRARY_NAME); }
 	
@@ -55,12 +56,15 @@ public class CVBase {
 		
 		try {
 			opencvDetectionInterval = Long.parseLong(PROP.getProp("opencv.detect.interval"));
+			threadSleep=  			  Long.parseLong(PROP.getProp("opencv.sleep"));
 			fileSeq =                 Long.parseLong(PROP.getProp("opencv.snapshot.seq"));
 			
 		} catch (NumberFormatException e) {
 			opencvDetectionInterval =  10;
+			threadSleep = 100;
 			fileSeq = 0;
 			System.out.println("Error! Default opencvDetectionInterval= " +opencvDetectionInterval);
+			System.out.println("Error! Default threadSleep= " +threadSleep);
 			System.out.println("Error! Default opencv.file.seq= " +fileSeq);
 		}
 
@@ -134,6 +138,7 @@ public class CVBase {
 				if(PROP.mustSnap()) {
 					//System.out.println("Salvou Prop");
 					// Increment counter and save picture on global variable
+					System.out.println("mustSnap()");
 					fileSeq++;
 					PROP.setPictureName(filename +Long.toString(fileSeq) +".jpg");
 					PROP.bufferedImage = img;
@@ -142,7 +147,7 @@ public class CVBase {
 				}
 				
 				try {
-					Thread.sleep(1000); // kkk
+					Thread.sleep(10000); // kkk
 					//System.out.println("Thread.sleep(100)");
 					
 				} catch (InterruptedException e) {

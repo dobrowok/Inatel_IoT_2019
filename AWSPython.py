@@ -67,7 +67,7 @@ if __name__ == '__main__':
         while True:
             now = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
             logger.info("try to publish: [" +topic  +"] {}".format(now))
-            ret = mqttc.publish(topic, "{ \"horaAtual\":\"" +now +"\"}")
+            ret = mqttc.publish(topic, "{ \"horaAtual Python\":\"" +now +"\"}")
             logger.info(ret)
             time.sleep(10)
             

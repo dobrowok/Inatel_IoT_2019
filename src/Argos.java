@@ -41,9 +41,8 @@ import org.opencv.core.Mat;
 public class Argos extends ClassLoader {
 	
 	//PropSingleton prop; 
-	private CommBase       commInterface;
-	@SuppressWarnings("unused")
-	private CVBase         cvBase;
+	private CommBase  commInterface;
+	private CVBase    cvBase;
 	
 	private static final Logger        LOGGER = Logger.getLogger(Argos.class.getName());
 	private static final PropSingleton PROP =   PropSingleton.INSTANCE;
@@ -58,21 +57,7 @@ public class Argos extends ClassLoader {
 		logStart();
 
 		// 2) Start the Communication subsystem (MQtt or dummy)
-		
-		// Path currentRelativePath = Paths.get("");
-		//String s = currentRelativePath.toAbsolutePath().toString();
-		// System.out.println("Current relative path is: " + s);
-		
-		 if(PROP.getProp("mqtt.type").equals("aws") || PROP.getProp("mqtt.type").equals("mosquitto") )
-			 commInterface = new CommMQtt(PROP.getProp("mqtt.client.id"));
-		 
-		 else if(PROP.getProp("mqtt.type").toLowerCase().equals("dummy"))
-		     commInterface = new CommDummy("bla");
-		 
-		 else {
-			 System.out.println("Error! No Comm type allowed!");
-			 System.exit(-1);
-		 }
+		commInterface = CommBase.getInstance(null);
 		
 		 // 3) Load the OpenCV class and the OpenCV subsystem 
 		 if(MyLoadClass(PROP.getProp("opencv.class")) == false) {
@@ -261,7 +246,7 @@ public class Argos extends ClassLoader {
 					PROP.bufferedImage = null;
 				}
 				
-				Thread.sleep(commInterface.getPublishInterval()) ;
+				Thread.sleep(50); //commInterface.getPublishInterval()) ;
 				
 				
 			} catch (InterruptedException |  IllegalArgumentException |  IOException e) {
@@ -298,7 +283,7 @@ public class Argos extends ClassLoader {
 		 // Start GUI client if CAPS_LOCK is on
 		 if(isWindows && PROP.getLockingKeyState(KeyEvent.VK_NUM_LOCK)) {
 			 PROP.setGUIMode(true);
-			 System.out.println("CAPS=" +PROP.getLockingKeyState(KeyEvent.VK_NUM_LOCK));
+			 System.out.println("NumLock=" +PROP.getLockingKeyState(KeyEvent.VK_NUM_LOCK));
 			 new ArgosGUI().run();
 			 
 		 } else { // Else, start normal Server			 

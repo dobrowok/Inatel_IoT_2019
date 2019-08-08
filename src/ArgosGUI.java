@@ -12,8 +12,6 @@ import javax.swing.JLabel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
-import org.opencv.core.Mat;
-
 public class ArgosGUI {
 	private static final PropSingleton PROP = PropSingleton.INSTANCE;
 
@@ -34,16 +32,7 @@ public class ArgosGUI {
 	ArgosGUI() {
 		String clientId = PROP.getProp("mqtt.client.id") +"_GUI";
 		 
-		if(PROP.getProp("mqtt.type").equals("aws") || PROP.getProp("mqtt.type").equals("mosquitto") )
-			commInterface = new CommMQtt(clientId);
-		 
-		else if(PROP.getProp("mqtt.type").toLowerCase().equals("dummy"))
-		     commInterface = new CommDummy(clientId);		 
-
-		else {
-			 System.out.println("Error! No Comm type allowed!");
-			 System.exit(-1);
-		 }
+		commInterface = CommBase.getInstance(clientId);
 		
 		// Create a graphical JFrame for showing the video output
 		jframe = new JFrame("Title");
@@ -73,6 +62,22 @@ public class ArgosGUI {
 		        commInterface.publish(jTopic.getText(), jClass.getText());
 		    }
 		} );
+		
+		// Label and button to send commands
+		JTextField jSnap = new JTextField(20);
+		jSnap.setText("/command/snapshot");
+		
+		JButton button2 = new JButton();
+		button2.setText("Send command:");
+		
+		button2.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+		    	//System.out.println("Button pressed");
+		        commInterface.publish(jSnap.getText(), ".");
+		    }
+		} );
+
+
 
 		//jframe.setContentPane(vidpanel);
 		// create a line border with the specified color and width
@@ -85,6 +90,9 @@ public class ArgosGUI {
 		jframe.add(button);
 		jframe.add(jTopic);
 		jframe.add(jClass);
+		jframe.add(button2);
+		jframe.add(jSnap);
+		
 		jframe.add(vidpanel);
 
 		jframe.setVisible(true);
@@ -96,7 +104,7 @@ public class ArgosGUI {
 		
 		while (PROP.shouldKeepRunning() && commInterface.isConnected() ) {
 			k++;
-	    	jframe.setTitle(commInterface.topicRec +k);
+	    	jframe.setTitle("GUI (" +k +")");
 	    	
 			try {
 				// Received a picture file
@@ -107,7 +115,7 @@ public class ArgosGUI {
 					vidpanel.setText(PROP.getPictureName());
 					vidpanel.repaint();
 					k++;
-					Thread.sleep(commInterface.getPublishInterval()/10) ;
+					Thread.sleep(50) ;
 
 				// Default test image
 				} else { 
