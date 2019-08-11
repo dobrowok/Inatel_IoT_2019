@@ -37,3 +37,5 @@ Progress:
 - 2019-Jul-26 Java: reflection re-factored
 - 2019-Jul-27 Java: AWS enabling (start)
 - 2019-Aug-07 Java: bug fixes and JSon starting
+- 2019-Aug-08 Java: exit event and bug fixing
+- 2019-Aug-10 Java: Raspberry bug fixes

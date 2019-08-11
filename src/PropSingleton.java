@@ -137,7 +137,7 @@ public enum PropSingleton {
 		this.running = running;
 	}
 
-	public boolean isNewClassArrived() {
+	public boolean isNewClassReceived() {
 		return newClassReceived;
 	}
 

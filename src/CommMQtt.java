@@ -100,30 +100,7 @@ public class CommMQtt extends CommBase implements MqttCallback
 	public boolean isConnected() {
 		return sampleClient.isConnected();
 	}
-	
-	@Override
-	public void disconnect() {
-		if(sampleClient.isConnected()) {
-			try {
-				// Simple JSon
-				String now = new Timestamp(System.currentTimeMillis()).toString();
-				publish("/status", "{ \"disconnecting\": \"" +now +"\" }");
-				sampleClient.disconnect();
-				
-			} catch(MqttException me) {
-	            System.out.println("reason "+me.getReasonCode());
-	            System.out.println("msg "+me.getMessage());
-	            System.out.println("loc "+me.getLocalizedMessage());
-	            System.out.println("cause "+me.getCause());
-	            System.out.println("excep "+me);
-	            me.printStackTrace();
-	        }
-		}
 		
-		LOGGER.info("MQtt disconnected");
-	}
-
-	
 	@Override
 	public void publish(String topic, String message) {
 		
@@ -145,16 +122,8 @@ public class CommMQtt extends CommBase implements MqttCallback
             System.out.println("excep "+me);
             me.printStackTrace();
 		}
-        
-        if(topic.toLowerCase().contains("error")) {
-        	LOGGER.severe(clientId +topic +": " +message);
-        	
-        } else if (topic.toLowerCase().contains("picture")) {
-        	LOGGER.warning("pusblish[" +clientId +topic +", [byte array]");
-        	
-        }    else {
-        	LOGGER.warning("pusblish[" +clientId +topic +", " +message +"] ");
-        }        
+        // Log
+        super.publish(topic, message);
 	}
 
 	@Override

@@ -13,6 +13,8 @@
  */
 import java.awt.FlowLayout;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.File;
@@ -37,6 +39,7 @@ public class CVBase {
 	private JFrame	jframe;
 	private String  filename;
 	private long    fileSeq= 0;
+	private int     opencvVideoId=0;
 	
 	protected Mat			frame;
 	protected Mat			gray;
@@ -51,9 +54,6 @@ public class CVBase {
 	public CVBase () {
 		System.out.println("construtor do CVBase");
 		
-		opencvVideo = PROP.getProp("opencv.video");
-		filename =    PROP.getProp("opencv.snapshot.filename");
-		
 		try {
 			opencvDetectionInterval = Long.parseLong(PROP.getProp("opencv.detect.interval"));
 			threadSleep=  			  Long.parseLong(PROP.getProp("opencv.sleep"));
@@ -67,12 +67,28 @@ public class CVBase {
 			System.out.println("Error! Default threadSleep= " +threadSleep);
 			System.out.println("Error! Default opencv.file.seq= " +fileSeq);
 		}
+		
+		filename =    PROP.getProp("opencv.snapshot.filename");
+		opencvVideo = PROP.getProp("opencv.video");
+		try {
+			if(opencvVideo.equals("0")) {
+				opencvVideoId = 0;
+			} else {
+				opencvVideoId =  Integer.parseInt(opencvVideo);
+			}
+			
+		} catch (NumberFormatException e) {
+			// Seems not a cam, but indeed a video
+			opencvVideoId =  -1;
+			threadSleep = 50;
+		}
 
 		// Open from a webcam (0) or a video file
-		if(opencvVideo.equals("0"))
-			camera = new VideoCapture(0);
-		else
-			camera = new VideoCapture(opencvVideo);
+		if(opencvVideoId==-1) {
+			camera = new VideoCapture(opencvVideo);    // Is a recorded movie
+		} else {
+			camera = new VideoCapture(opencvVideoId);  // Is a webcam
+		}
 
 		if(PROP.isGUIMode()) {
 			// Create a graphical JFrame for showing the video output
@@ -84,6 +100,16 @@ public class CVBase {
 			vidpanel = new JLabel();
 			jframe.setContentPane(vidpanel);
 			jframe.setVisible(true);
+			jframe.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // avoid closing
+			jframe.addWindowListener(new WindowAdapter() {
+				 
+				@Override			 
+				public void windowClosing(WindowEvent e) {
+					PROP.setRunning(false);
+					jframe.setTitle("Exiting..." );
+				}
+			});
+			
 		} else {
 			LOGGER.warning("No GUI detected! Will work only as server !");
 		}
@@ -147,7 +173,7 @@ public class CVBase {
 				}
 				
 				try {
-					Thread.sleep(10000); // kkk
+					Thread.sleep(threadSleep); 
 					//System.out.println("Thread.sleep(100)");
 					
 				} catch (InterruptedException e) {
@@ -156,15 +182,22 @@ public class CVBase {
 				}
 				        
 			} else {
-			    // Rewind video
-				camera.set(Videoio.CAP_PROP_POS_FRAMES, 0);
-				System.out.println("Video rewind at frame [" +k +"]");
-			    k= 0;
+			    // Rewind video]
+				if(camera.isOpened()) {
+					camera.set(Videoio.CAP_PROP_POS_FRAMES, 0);
+					System.out.println("Video rewind at frame [" +k +"]");
+					k= 0;
+				
+				} else {
+					PROP.setRunning(false);
+					System.out.println("Could not open camera 'opencv.video=[" +opencvVideo +"]'");
+					System.exit(0);
+				}
 			}	
 		}
 	}
     
-    public static BufferedImage Mat2BufferedImage(Mat m){
+    public static BufferedImage Mat2BufferedImage(Mat m) {
         //source: http://answers.opencv.org/question/10344/opencv-java-load-image-to-gui/
         //Fastest code
         //The output can be assigned either to a BufferedImage or to an Image

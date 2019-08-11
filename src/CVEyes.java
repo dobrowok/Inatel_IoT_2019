@@ -11,17 +11,16 @@ import org.opencv.objdetect.CascadeClassifier;
 
 public class CVEyes {
 	private static final PropSingleton PROP = PropSingleton.INSTANCE;
-	protected CascadeClassifier	cascade; 
+	protected CascadeClassifier	face, cascade2; 
 	protected MatOfRect			detections;
 	protected Rect[] 			detectedArray; 
 	
 	public CVEyes() {
-		//System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		System.out.println("construtor do CVEyes");
 
 		// Load the classifiers
-		//cascade =  new  CascadeClassifier("haarcascade_frontalcatface.xml"); 
-		cascade =   new  CascadeClassifier("haarcascade_eye.xml");
+		face =  new  CascadeClassifier("haarcascade_frontalface_alt.xml"); 
+		cascade2 =  new  CascadeClassifier("haarcascade_eye.xml");
         //cascade = new  CascadeClassifier("haarcascade_mcs_mouth.xml");
     	detections=	new MatOfRect();
 	}
@@ -45,8 +44,10 @@ public class CVEyes {
 	            //Mat faceROI = image.submat(facesArray[i]);
 
     	// detectMultiScale(Mat, MatOfRect, double scaleFactor, int minNeighbors, int flags, Size minSize, Size maxSize)
-	    cascade.detectMultiScale(gray, detections, 1.1 /*scaleFactor*/, 1 /*minNeighbors*/, 0, 
-    							 new Size(30,30) /*minSize*/, new Size(100,100));
+    	cascade2.detectMultiScale(gray, detections);
+    	
+	    //cascade2.detectMultiScale(gray, detections, 1.1 /*scaleFactor*/, 1 /*minNeighbors*/, 0, 
+    	//						 new Size(30,30) /*minSize*/, new Size(100,100));
 
 	    // Detected features
 	    detectedArray = detections.toArray();

@@ -2,22 +2,14 @@
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.sql.Timestamp;
 import java.util.Base64;
 import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
-
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 
 public abstract class CommBase {
 	private final static PropSingleton PROP = PropSingleton.INSTANCE;
@@ -57,33 +49,20 @@ public abstract class CommBase {
 	        instance.publish("/status", js);
 	        */
 	        
-	        OutputStream bout= new ByteArrayOutputStream();
-			JsonGenerator gen;
-			try {
-				gen = new JsonFactory().createGenerator(new OutputStreamWriter(bout, "UTF-8"));
-				
-				//for pretty printing
-				gen.setPrettyPrinter(new DefaultPrettyPrinter());
-				gen.writeStartObject(); // start root object
-
-				gen.writeStringField("clientId",  clientId);
-				gen.writeStringField("connected", new Timestamp(System.currentTimeMillis()).toString());
-				gen.writeStringField("SO", 		  System.getProperty("os.name"));
-				gen.writeStringField("DISPLAY",   System.getenv("DISPLAY"));
-				//gen.writeNumberField("um numero", 777);
-				//gen.writeBooleanField("permanent", true);
-
-		        //gen.writeEndObject(); //closing properties
-				gen.writeEndObject(); //closing root object
-		        gen.flush();
-		        gen.close();
-		        
-		        instance.publish("/status", bout.toString());		        
-
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			MyJson myJson =  MyJson.getInstance(); 
+			
+			myJson.writeStartObject(); // start root object
+			myJson.writeStringField("clientId",     clientId);
+			myJson.writeStringField("connected",    new Timestamp(System.currentTimeMillis()).toString());
+			myJson.writeStringField("opencv.video", PROP.getProp("opencv.video"));
+			myJson.writeStringField("SO", 		  	System.getProperty("os.name"));
+			myJson.writeStringField("DISPLAY",      System.getenv("DISPLAY"));
+			instance.publish("/status", myJson.getJson());
+			/* 
+			myJson.writeStartObject(); // start root object
+			myJson.writeStringField("xNovo", "xovo");
+			System.out.println( myJson.getJson());
+			*/
 	    }
 		
 		return instance;
@@ -116,8 +95,27 @@ public abstract class CommBase {
 		    System.out.println("topics[" +i +"]= " +topics[i] );
         }
 	}    
-	public abstract void    publish(String topic, String message);
-	public abstract void    disconnect();
+	public void publish(String topic, String message) {
+        
+        if(topic.toLowerCase().contains("error")) {
+        	LOGGER.severe(clientId +topic +": " +message);
+        	
+        } else if (topic.toLowerCase().contains("picture")) {
+        	LOGGER.warning("pusblish[" +clientId +topic +", [byte array]");
+        	
+        }    else {
+        	LOGGER.warning("pusblish[" +clientId +topic +", " +message +"] ");
+        }        
+	};
+	
+	public void disconnect() {
+		// Simple JSon
+		String now = new Timestamp(System.currentTimeMillis()).toString();
+		publish("/status", "{ \"disconnecting\": \"" +now +"\" }");
+		LOGGER.info("MQtt disconnected");
+		System.exit(0);
+	}
+	
 	public abstract boolean isConnected();
 	
 	public long getPublishInterval() {
@@ -222,18 +220,17 @@ public abstract class CommBase {
 				try (FileOutputStream fos = new FileOutputStream(filename)) {
 				    fos.write(message.getBytes()); //kkk ??? .getPayload());
 					LOGGER.info("Saving to: " +System.getProperty("user.dir") +"/" +filename );
-					publish("/status", "{ \"received new class\": \"" +filename +"\" }");
+					publish("/status", "{ \"msg\": \"received new class: [" +filename +"] }");
 					PROP.setNewClassReceived(true);
 					
 				} catch (IOException ioe) {
 				    ioe.printStackTrace();
-				    publish("/error", "{ \"error Saving class\": \"failed due to: [" +ioe.getMessage() +"]\" }");
+				    publish("/error", "{ \"msg\": \"error Saving class due to: [" +ioe.getMessage() +"]\" }");
 				}
 				
 			}else {
-				publish("/error", "{ \"error\": \"Class received, but incomplete (cannot found a '{' inside message body) \" }");
+				publish("/error", "{ \"msg\": \"Class received, but incomplete (cannot found a '{' inside message body) \" }");
 			}
-			// kkk JsonNode payload = fromString(new String(message.getPayload(), StandardCharsets.UTF_8));
 		}
 	}
 }

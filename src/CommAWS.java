@@ -29,9 +29,9 @@ public class CommAWS extends CommBase {
 	    }
 	}
 	
-	public CommAWS(String meu) { //(String myClientId) {
+	public CommAWS(String myClientId) { //(String myClientId) {
 		//super(clientEndpoint, clientEndpoint, connection); //myClientId);
-		super(null);
+		super(myClientId);
 		//super(clientEndpoint, clientId, awsAccessKeyId, awsSecretAccessKey, null);
 		//super(meu, AWSIotQos.QOS0);
 		
@@ -101,21 +101,8 @@ public class CommAWS extends CommBase {
             LOGGER.severe("Cannot 'publish': MQtt is disconnected");
         }
 		
-		if(topic.toLowerCase().contains("error")) {
-			LOGGER.severe(topic +": " +message);
-			
-		} else if (topic.toLowerCase().contains("picture")) {
-			LOGGER.warning("pusblish[" +clientId +topic +", [byte array]");
-			
-		}    else {
-			LOGGER.warning("pusblish[" +clientId +topic +", " +message +"] ");
-		}		
-	}
-
-	@Override
-	public void disconnect() {
-		// TODO Auto-generated method stub
-		
+        // Log
+        super.publish(topic, message);
 	}
 
 	@Override

@@ -42,6 +42,7 @@ public class Argos extends ClassLoader {
 	
 	//PropSingleton prop; 
 	private CommBase  commInterface;
+	@SuppressWarnings("unused")
 	private CVBase    cvBase;
 	
 	private static final Logger        LOGGER = Logger.getLogger(Argos.class.getName());
@@ -62,7 +63,10 @@ public class Argos extends ClassLoader {
 		 // 3) Load the OpenCV class and the OpenCV subsystem 
 		 if(MyLoadClass(PROP.getProp("opencv.class")) == false) {
 				// Error! use original class instead
-				MyLoadClass(PROP.getProp("opencv.class.original")); 
+				if(MyLoadClass(PROP.getProp("opencv.class.original")) == false) {
+					LOGGER.severe("Could not load the default OpenCV class, at all!");
+					System.exit(-1);
+				}
 		 }
 		 cvBase = new CVBase();  // OpenCV processing thread
 	}
@@ -125,7 +129,7 @@ public class Argos extends ClassLoader {
 			LOGGER.warning("Going to execute : " +javac);
 			
 			final Process process = builder.start();			
-			int   exitCode = process.waitFor();
+			int   exitCode = process.waitFor();//5, TimeUnit.SECONDS);
 			
 		    // get compile command output
 			InputStream       is = process.getErrorStream();  
@@ -137,7 +141,8 @@ public class Argos extends ClassLoader {
 	        result = sj.toString();
 	        
 	        if(exitCode != 0) {
-				commInterface.publish("/error", "Compile failed due to : [" +result +"]");
+				commInterface.publish("/error", "{ \"compiled\": \"" +javac +"\", \n"
+									 +"\"msg\": \"Compile failed due to : <" +result +">\" }");
 				
 			} else {
 				PROP.setNewClassReceived(true);
@@ -197,8 +202,9 @@ public class Argos extends ClassLoader {
 			
         } catch (LinkageError | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | IOException | NoSuchMethodException | SecurityException e) {
 			e.printStackTrace();
-			commInterface.publish("/error", "{\"error\":\" in MyLoadClass(" +className +")\n" +e.getClass().getName()
-								+ " [" +e.getMessage() +"] \" }");
+			commInterface.publish("/error", "{\"error\":\" in MyLoadClass<" +className +">\n" 
+								  +e.getClass().getName()
+								  + " <" +e.getMessage() +"> \" }");
 
 			return false;
         } 
@@ -209,7 +215,7 @@ public class Argos extends ClassLoader {
 		while (PROP.shouldKeepRunning() && commInterface.isConnected() ) {
 			try {
 				// Event: received a new class for openCV and...
-				if(PROP.isNewClassArrived()) {
+				if(PROP.isNewClassReceived()) {
 					// 1- Try to compile the file
 					if(compile(PROP.getClassName() +".java") == false) {
 						LOGGER.severe("Could not compile [" +PROP.getClassName() +"]");
@@ -295,7 +301,7 @@ public class Argos extends ClassLoader {
 				 
 			 } while(shouldRestart);
 		 }
-		 
+		 	 
 		 System.exit(0);
 	 }
 }

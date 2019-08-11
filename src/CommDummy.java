@@ -29,11 +29,7 @@ public class CommDummy extends CommBase {
 			e.printStackTrace();
 		}
 	}
-
-	@Override
-	public void disconnect() {
-	}
-
+	
 	@Override
 	public boolean isConnected() {
 		return true;
